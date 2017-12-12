@@ -13,14 +13,25 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "FailOverCacheAcceptor.h"
 #include "FailOverCacheServer.h"
 #include "FileBackend.h"
+#include "MemoryBackend.h"
 
 #include <boost/optional/optional_io.hpp>
 
+namespace dtl = volumedriver::failovercache;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace vd = volumedriver;
+
+namespace
+{
+
+const char* daemonize = "daemonize";
+const char* nullio = "nullio";
+
+}
 
 FailOverCacheServer::FailOverCacheServer(int argc,
                                          char** argv)
@@ -30,10 +41,7 @@ FailOverCacheServer::FailOverCacheServer(int argc,
 FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
     : MainHelper(c)
     , desc_("Required Options")
-    , transport_(vd::FailOverCacheTransport::TCP)
-    , busy_loop_usecs_(0)
-    , file_backend_buffer_size_(vd::failovercache::FileBackend::default_stream_buffer_size())
-    , running_(false)
+    , file_backend_buffer_size_(dtl::FileBackend::Config::default_stream_buffer_size())
 {
     logger_ = &MainHelper::getLogger__();
 
@@ -56,8 +64,12 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
         ("file-backend-buffer-size",
          po::value<size_t>(&file_backend_buffer_size_)->default_value(file_backend_buffer_size_),
          "stream buffer size for the file backend")
-        ("daemonize,D",
-         "run as a daemon");
+        ("protocol-features",
+         po::value<dtl::ProtocolFeatures>(&protocol_features_)->default_value(dtl::ProtocolFeatures(dtl::ProtocolFeature::TunnelCapnProto)),
+         "protocol feature mask")
+        (daemonize,
+         "run as a daemon")
+        ;
 }
 
 void
@@ -89,28 +101,33 @@ FailOverCacheServer::setup_logging()
 int
 FailOverCacheServer::run()
 {
-    boost::optional<fs::path> path;
-    if (not path_.empty())
-    {
-        path = path_;
-    }
-
-    if (path)
-    {
-        if(not fs::exists(*path))
+    const auto factory_config =
+        [&]() -> dtl::BackendFactory::Config
         {
-            throw fungi::IOException("failovercache directory does not exist",
-                                     path->string().c_str());
-        }
+            if (not path_.empty())
+            {
+                if(not fs::exists(path_))
+                {
+                    throw fungi::IOException("failovercache directory does not exist",
+                                             path_.string().c_str());
+                }
 
-        if(not fs::is_directory(*path))
-        {
-            throw fungi::IOException("failovercache path is not a directory",
-                                     path->string().c_str());
-        }
-    }
+                if (not fs::is_directory(path_))
+                {
+                    throw fungi::IOException("failovercache path is not a directory",
+                                             path_.string().c_str());
+                }
 
-    if (vm_.count("daemonize"))
+                return dtl::FileBackend::Config(path_,
+                                                file_backend_buffer_size_);
+            }
+            else
+            {
+                return dtl::MemoryBackend::Config();
+            }
+        }();
+
+    if (vm_.count(daemonize))
     {
         const int ret = ::daemon(0, 0);
         if (ret)
@@ -119,22 +136,23 @@ FailOverCacheServer::run()
         }
     }
 
+    LOG_INFO( "starting"
+              ", address to bind to: " << addr_ <<
+              ", port: " << port_ <<
+              ", transport type: " << transport_ <<
+              ", busy-loop usecs: " << busy_loop_usecs_ <<
+              ", backend options: " << factory_config <<
+              ", protocol features: " << std::hex << std::showbase << protocol_features_);
+
     boost::optional<std::string> addr;
     if (not addr_.empty())
     {
         addr = addr_;
     }
 
-    LOG_INFO( "starting, server path: " << path <<
-              ", address to bind to: " << addr <<
-              ", port: " << port_ <<
-              ", transport type: " << transport_ <<
-              ", busy-loop usecs: " << busy_loop_usecs_ <<
-              ", file backend stream buffer size: " << file_backend_buffer_size_);
-
-    acceptor = std::make_unique<vd::failovercache::FailOverCacheAcceptor>(path,
-                                                                          file_backend_buffer_size_,
-                                                                          boost::chrono::microseconds(busy_loop_usecs_));
+    acceptor = std::make_unique<vd::failovercache::FailOverCacheAcceptor>(factory_config,
+                                                                          boost::chrono::microseconds(busy_loop_usecs_),
+                                                                          protocol_features_);
 
     LOG_INFO("Running the SocketServer");
 

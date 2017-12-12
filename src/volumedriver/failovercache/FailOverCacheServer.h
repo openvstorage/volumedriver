@@ -16,7 +16,7 @@
 #ifndef FAILOVERCACHE_SERVER_H_
 #define FAILOVERCACHE_SERVER_H_
 
-#include "FailOverCacheAcceptor.h"
+#include "ProtocolFeature.h"
 
 #include "../FailOverCacheTransport.h"
 
@@ -38,6 +38,18 @@
 namespace failovercachetest
 {
 class FailOverCacheEnvironment;
+}
+
+namespace volumedriver
+{
+
+namespace failovercache
+{
+
+class FailOverCacheAcceptor;
+
+}
+
 }
 
 class FailOverCacheServer
@@ -76,11 +88,14 @@ private:
     boost::filesystem::path path_;
     std::string addr_;
     uint16_t port_;
-    volumedriver::FailOverCacheTransport transport_;
-    unsigned busy_loop_usecs_;
+    volumedriver::FailOverCacheTransport transport_ =
+        volumedriver::FailOverCacheTransport::TCP;
+    unsigned busy_loop_usecs_ = 0;
     size_t file_backend_buffer_size_;
+    volumedriver::failovercache::ProtocolFeatures protocol_features_ =
+        volumedriver::failovercache::ProtocolFeatures(volumedriver::failovercache::ProtocolFeature::TunnelCapnProto);
 
-    bool running_;
+    bool running_ = false;
 
     // *ONLY* for testers. Really. I mean it.
     void

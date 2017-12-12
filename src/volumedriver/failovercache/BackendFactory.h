@@ -14,8 +14,12 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Backend.h"
+#include "FileBackend.h"
+#include "FileBackendFactory.h"
+#include "MemoryBackend.h"
 
 #include <boost/filesystem.hpp>
+#include <boost/variant.hpp>
 
 #include <youtils/FileDescriptor.h>
 #include <youtils/Logging.h>
@@ -29,10 +33,12 @@ namespace failovercache
 class BackendFactory
 {
 public:
-    BackendFactory(const boost::optional<boost::filesystem::path>&,
-                   const boost::optional<size_t> file_backend_buffer_size);
+    using Config = boost::variant<FileBackend::Config,
+                                          MemoryBackend::Config>;
 
-    ~BackendFactory();
+    explicit BackendFactory(const Config&);
+
+    ~BackendFactory() = default;
 
     BackendFactory(const BackendFactory&) = delete;
 
@@ -46,11 +52,8 @@ public:
 private:
     DECLARE_LOGGER("DtlBackendFactory");
 
-    std::unique_ptr<youtils::FileDescriptor> lock_fd_;
-    boost::unique_lock<youtils::FileDescriptor> file_lock_;
-
-    const boost::optional<boost::filesystem::path> root_;
-    const boost::optional<size_t> file_backend_buffer_size_;
+    const Config factory_config_;
+    boost::optional<FileBackendFactory> file_backend_factory_;
 };
 
 }

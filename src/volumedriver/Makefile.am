@@ -132,6 +132,7 @@ libvolumedriver_la_SOURCES = \
 	failovercache/FailOverCacheAcceptor.cpp \
 	failovercache/FailOverCacheProtocol.cpp \
 	failovercache/FileBackend.cpp \
+	failovercache/FileBackendFactory.cpp \
 	failovercache/MemoryBackend.cpp \
 	failovercache/Protocol-capnp.cpp \
 	failovercache/ProtocolFeature.cpp \

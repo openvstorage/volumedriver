@@ -35,8 +35,8 @@ public:
                             const boost::optional<size_t> file_backend_buffer_size = boost::none)
         : path(pth)
         , port(prt)
-        , acceptor_(path,
-                    file_backend_buffer_size,
+        , acceptor_(volumedriver::failovercache::FileBackend::Config(path,
+                                                                     file_backend_buffer_size),
                     boost::chrono::microseconds(0))
         , server_(fungi::SocketServer::createSocketServer(acceptor_,
                                                           addr,

@@ -121,6 +121,13 @@ MemoryBackend::get_entries(const volumedriver::SCO sco,
     return count;
 }
 
+std::ostream&
+operator<<(std::ostream& os,
+           const MemoryBackend::Config&)
+{
+    return os << "MemoryBackend::Config{}";
+}
+
 }
 
 }

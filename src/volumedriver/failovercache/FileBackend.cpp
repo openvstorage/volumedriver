@@ -19,6 +19,8 @@
 
 #include "fungilib/WrapByteArray.h"
 
+#include <iostream>
+
 #include <boost/scoped_array.hpp>
 
 #include <youtils/Assert.h>
@@ -34,16 +36,15 @@ namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
-FileBackend::FileBackend(const fs::path& root,
+FileBackend::FileBackend(const Config& config,
                          const std::string& nspace,
-                         const vd::ClusterSize cluster_size,
-                         const boost::optional<size_t> stream_buffer_size)
+                         const vd::ClusterSize cluster_size)
     : Backend(nspace,
               cluster_size)
-    , root_(root / nspace)
-    , stream_buffer_size_(stream_buffer_size ? *stream_buffer_size : default_stream_buffer_size())
+    , config_(config)
+    , root_(config_.path / nspace)
 {
-    LOG_INFO("creating " << root_ << ", stream buffer size: " << stream_buffer_size);
+    LOG_INFO("creating " << root_ << ", stream buffer size: " << config_.stream_buffer_size);
     fs::create_directories(root_);
 }
 
@@ -95,7 +96,7 @@ FileBackend::open(const vd::SCO sco)
     file_ = std::make_unique<fungi::File>(p.string(),
                                           fungi::File::Append);
 
-    file_->open(stream_buffer_size_);
+    file_->open(config_.stream_buffer_size);
 }
 
 void
@@ -146,7 +147,7 @@ FileBackend::get_entries(const vd::SCO sco,
 
     fungi::File f(filename.string(),
                   fungi::File::Read);
-    f.open(stream_buffer_size_);
+    f.open(config_.stream_buffer_size);
 
     VERIFY(entry_size_);
     if (off)
@@ -194,10 +195,14 @@ FileBackend::get_entries(const vd::SCO sco,
     return count;
 }
 
-size_t
-FileBackend::default_stream_buffer_size()
+std::ostream&
+operator<<(std::ostream& os,
+           const FileBackend::Config& cfg)
 {
-    return 128ULL * 1024;
+    return os <<
+        "FileBackend::Config{path=" << cfg.path <<
+        ",stream_buffer_size=" << cfg.stream_buffer_size <<
+        "}";
 }
 
 }

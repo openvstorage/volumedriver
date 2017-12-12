@@ -25,6 +25,7 @@ namespace volumedrivertest
 
 namespace be = backend;
 namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 using namespace std::literals::string_literals;
 using namespace volumedriver;
@@ -32,19 +33,21 @@ using namespace volumedriver;
 namespace
 {
 
-boost::optional<fs::path>
-make_directory(const boost::optional<fs::path>& path,
-               uint16_t port)
+failovercache::BackendFactory::Config
+prepare_backend(const boost::optional<fs::path>& path,
+                const boost::optional<size_t> file_backend_buffer_size,
+                uint16_t port)
 {
     if (path)
     {
         const fs::path p(path->string() + "-"s + boost::lexical_cast<std::string>(port));
         fs::create_directories(p);
-        return p;
+        return failovercache::FileBackend::Config(p,
+                                                  file_backend_buffer_size);
     }
     else
     {
-        return path;
+        return failovercache::MemoryBackend::Config();
     }
 }
 
@@ -58,9 +61,9 @@ FailOverCacheTestContext::FailOverCacheTestContext(FailOverCacheTestSetup& setup
     : setup_(setup)
     , addr_(addr)
     , port_(port)
-    , acceptor_(make_directory(setup_.path,
-                               port_),
-                file_backend_buffer_size,
+    , acceptor_(prepare_backend(setup_.path,
+                                file_backend_buffer_size,
+                                port_),
                 busy_retry_duration,
                 setup.protocol_features)
     , server_(fungi::SocketServer::createSocketServer(acceptor_,

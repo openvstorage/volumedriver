@@ -19,6 +19,7 @@
 #include "Backend.h"
 #include "fungilib/File.h"
 
+#include <iosfwd>
 #include <memory>
 
 #include <boost/filesystem.hpp>
@@ -29,14 +30,33 @@ namespace volumedriver
 namespace failovercache
 {
 
+class FileBackendFactory;
+
 class FileBackend
     : public Backend
 {
+    friend class FileBackendFactory;
+
 public:
-    FileBackend(const boost::filesystem::path&,
-                const std::string&,
-                const volumedriver::ClusterSize,
-                const boost::optional<size_t> stream_buffer_size);
+    struct Config
+    {
+        boost::filesystem::path path;
+        size_t stream_buffer_size;
+
+        Config(const boost::filesystem::path& p,
+               const boost::optional<size_t>& sz)
+            : path(p)
+            , stream_buffer_size(sz ?
+                                 *sz :
+                                 default_stream_buffer_size())
+        {}
+
+        static size_t
+        default_stream_buffer_size()
+        {
+            return 128ULL * 1024;
+        }
+    };
 
     ~FileBackend();
 
@@ -73,20 +93,26 @@ public:
         return root_;
     }
 
-    static size_t
-    default_stream_buffer_size();
 
 private:
     DECLARE_LOGGER("DtlFileBackend");
 
     std::unique_ptr<fungi::File> file_;
+    const Config config_;
     const boost::filesystem::path root_;
-    const size_t stream_buffer_size_;
     size_t entry_size_ = 0;
 
     boost::filesystem::path
     make_path_(const volumedriver::SCO) const;
+
+    FileBackend(const Config&,
+                const std::string& nspace,
+                const volumedriver::ClusterSize);
 };
+
+std::ostream&
+operator<<(std::ostream&,
+           const FileBackend::Config&);
 
 }
 

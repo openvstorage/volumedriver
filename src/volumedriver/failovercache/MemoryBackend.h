@@ -30,6 +30,9 @@ class MemoryBackend
     : public Backend
 {
 public:
+    struct Config
+    {};
+
     MemoryBackend(const std::string&,
                   const volumedriver::ClusterSize);
 
@@ -89,6 +92,10 @@ private:
     // capacity / increment used when adding to SCOEntries
     static constexpr size_t sco_entries_slab_size_ = 4096;
 };
+
+std::ostream&
+operator<<(std::ostream&,
+           const MemoryBackend::Config&);
 
 }
 

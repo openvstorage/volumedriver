@@ -15,6 +15,7 @@
 
 #include "FailOverCacheEnvironment.h"
 
+#include "../FailOverCacheAcceptor.h"
 #include "../FailOverCacheServer.h"
 
 #include <boost/lexical_cast.hpp>

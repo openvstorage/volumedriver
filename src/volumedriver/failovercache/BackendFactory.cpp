@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendFactory.h"
-#include "FileBackend.h"
+#include "FileBackendFactory.h"
 #include "MemoryBackend.h"
 
 namespace volumedriver
@@ -30,99 +30,71 @@ namespace yt = youtils;
 namespace
 {
 
-const std::string safetyfile(".failovercache");
-
-const boost::optional<fs::path>&
-maybe_make_dir(const boost::optional<fs::path>& p)
+struct FileBackendFactoryInitializer
+    : public boost::static_visitor<boost::optional<FileBackendFactory>>
 {
-    if (p)
+    boost::optional<FileBackendFactory>
+    operator()(const FileBackend::Config& cfg) const
     {
-        fs::create_directories(*p);
+        return FileBackendFactory(cfg);
     }
 
-    return p;
-}
-
-}
-
-BackendFactory::BackendFactory(const boost::optional<fs::path>& path,
-                               const boost::optional<size_t> file_backend_buffer_size)
-    : root_(maybe_make_dir(path))
-    , file_backend_buffer_size_(file_backend_buffer_size)
-{
-    if (root_)
+    template<typename T>
+        boost::optional<FileBackendFactory>
+    operator()(const T&) const
     {
-        const fs::path f(*root_ / safetyfile);
-
-        if (not fs::exists(f) and
-            not fs::is_empty(*root_))
-        {
-            LOG_ERROR("Cowardly refusing to use " << *root_ <<
-                      " for failovercache because it is not empty");
-            throw fungi::IOException("Not starting failover in nonempty dir");
-        }
-
-        lock_fd_ = std::make_unique<yt::FileDescriptor>(f,
-                                                        yt::FDMode::Write,
-                                                        CreateIfNecessary::T);
-
-        file_lock_ = boost::unique_lock<yt::FileDescriptor>(*lock_fd_,
-                                                            boost::try_to_lock);
-
-        if (not file_lock_)
-        {
-            LOG_ERROR("Failed to lock " << lock_fd_->path());
-            throw fungi::IOException("Not starting failovercache without lock");
-        }
-
-        for (fs::directory_iterator it(*root_); it != fs::directory_iterator(); ++it)
-        {
-            if (it->path() != lock_fd_->path())
-            {
-                LOG_INFO("Removing " << it->path());
-                fs::remove_all(it->path());
-            }
-            else
-            {
-                LOG_INFO("Not removing " << it->path());
-            }
-        }
+        return boost::none;
     }
-}
+};
 
-BackendFactory::~BackendFactory()
+struct BackendCreator
+    : public boost::static_visitor<std::unique_ptr<Backend>>
 {
-    if (root_)
+    const boost::optional<FileBackendFactory>& file_backend_factory_;
+    const std::string& nspace;
+    const vd::ClusterSize csize;
+
+    BackendCreator(const boost::optional<FileBackendFactory>& factory,
+                   const std::string& ns,
+                   const vd::ClusterSize cs)
+        : file_backend_factory_(factory)
+        , nspace(ns)
+        , csize(cs)
+    {}
+
+    std::unique_ptr<Backend>
+    operator()(const FileBackend::Config&) const
     {
-        try
-        {
-            fs::directory_iterator end;
-            for (fs::directory_iterator it(*root_); it != end; ++it)
-            {
-                LOG_INFO("Cleaning up " << it->path());
-                fs::remove_all(it->path());
-            }
-        }
-        CATCH_STD_ALL_LOG_IGNORE("Failed to clean up " << root_);
+        ASSERT(file_backend_factory_);
+        return file_backend_factory_->make_one(nspace,
+                                               csize);
     }
+
+    std::unique_ptr<Backend>
+    operator()(const MemoryBackend::Config&) const
+    {
+        ASSERT(not file_backend_factory_);
+        return std::make_unique<MemoryBackend>(nspace,
+                                               csize);
+    }
+};
+
 }
+
+BackendFactory::BackendFactory(const Config& config)
+    : factory_config_(config)
+    , file_backend_factory_(boost::apply_visitor(FileBackendFactoryInitializer(),
+                                                 factory_config_))
+{}
 
 std::unique_ptr<Backend>
 BackendFactory::make_backend(const std::string& nspace,
                              const vd::ClusterSize csize)
 {
-    if (root_)
-    {
-        return std::make_unique<FileBackend>(*root_,
-                                             nspace,
-                                             csize,
-                                             file_backend_buffer_size_);
-    }
-    else
-    {
-        return std::make_unique<MemoryBackend>(nspace,
-                                               csize);
-    }
+    return boost::apply_visitor(BackendCreator(file_backend_factory_,
+                                               nspace,
+                                               csize),
+                                factory_config_);
 }
 
 }

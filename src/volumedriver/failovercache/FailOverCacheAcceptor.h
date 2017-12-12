@@ -47,8 +47,7 @@ class FailOverCacheAcceptor
     friend class volumedrivertest::FailOverCacheTestContext;
 
 public:
-    FailOverCacheAcceptor(const boost::optional<boost::filesystem::path>& root,
-                          const boost::optional<size_t> file_backend_buffer_size,
+    FailOverCacheAcceptor(const BackendFactory::Config&,
                           const boost::chrono::microseconds busy_loop_duration,
                           const ProtocolFeatures = ProtocolFeatures(ProtocolFeature::TunnelCapnProto));
 

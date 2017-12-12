@@ -33,12 +33,11 @@ using namespace fungi;
 #define LOCK()                                  \
     boost::lock_guard<decltype(mutex_)> lg_(mutex_)
 
-FailOverCacheAcceptor::FailOverCacheAcceptor(const boost::optional<fs::path>& path,
-                                             const boost::optional<size_t> file_backend_buffer_size,
+FailOverCacheAcceptor::FailOverCacheAcceptor(const BackendFactory::Config& options,
                                              const boost::chrono::microseconds busy_loop_duration,
                                              const ProtocolFeatures features)
     : protocol_features(features)
-    , factory_(path, file_backend_buffer_size)
+    , factory_(options)
     , busy_loop_duration_(busy_loop_duration)
 {}
 
