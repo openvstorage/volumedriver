@@ -17,6 +17,7 @@
 #include "FailOverCacheServer.h"
 #include "FileBackend.h"
 #include "MemoryBackend.h"
+#include "NullBackend.h"
 
 #include <boost/optional/optional_io.hpp>
 
@@ -69,6 +70,8 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
          "protocol feature mask")
         (daemonize,
          "run as a daemon")
+        (nullio,
+         "nullio mode")
         ;
 }
 
@@ -104,7 +107,11 @@ FailOverCacheServer::run()
     const auto factory_config =
         [&]() -> dtl::BackendFactory::Config
         {
-            if (not path_.empty())
+            if (vm_.count(nullio))
+            {
+                return dtl::NullBackend::Config();
+            }
+            else if (not path_.empty())
             {
                 if(not fs::exists(path_))
                 {

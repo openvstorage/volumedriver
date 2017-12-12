@@ -16,6 +16,7 @@
 #include "BackendFactory.h"
 #include "FileBackendFactory.h"
 #include "MemoryBackend.h"
+#include "NullBackend.h"
 
 namespace volumedriver
 {
@@ -77,6 +78,15 @@ struct BackendCreator
         return std::make_unique<MemoryBackend>(nspace,
                                                csize);
     }
+
+    std::unique_ptr<Backend>
+    operator()(const NullBackend::Config&) const
+    {
+        ASSERT(not file_backend_factory_);
+        return std::make_unique<NullBackend>(nspace,
+                                             csize);
+    }
+
 };
 
 }

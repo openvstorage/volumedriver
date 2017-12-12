@@ -17,6 +17,7 @@
 #include "FileBackend.h"
 #include "FileBackendFactory.h"
 #include "MemoryBackend.h"
+#include "NullBackend.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/variant.hpp>
@@ -34,7 +35,8 @@ class BackendFactory
 {
 public:
     using Config = boost::variant<FileBackend::Config,
-                                          MemoryBackend::Config>;
+                                  MemoryBackend::Config,
+                                  NullBackend::Config>;
 
     explicit BackendFactory(const Config&);
 
