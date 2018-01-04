@@ -3200,6 +3200,7 @@ Volume::updateMetaDataBackendConfig(const MetaDataBackendConfig& mcfg)
 {
     SERIALIZE_WRITES();
     WLOCK();
+    checkNotHalted_();
 
     metaDataStore_->updateBackendConfig(mcfg);
 
