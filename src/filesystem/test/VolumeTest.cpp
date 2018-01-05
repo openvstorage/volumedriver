@@ -186,7 +186,7 @@ TEST_F(VolumeTest, uuid_create_and_destroy)
     verify_absence(vname);
 
     const ObjectId volume_id(create_file(root_id,
-                                              vname.str().substr(1)));
+                                         vname.str().substr(1)));
     verify_registration(volume_id, local_node_id());
 
     {
@@ -1276,7 +1276,8 @@ TEST_F(VolumeTest, start_while_running)
               write_to_file(fname, pattern, wsize, 0));
     check_file(fname, pattern, wsize, 0);
 
-    fs_->object_router().migrate(id);
+    EXPECT_THROW(fs_->object_router().migrate(id),
+                 std::exception);
 
     check_file(fname, pattern, wsize, 0);
 }
@@ -1287,8 +1288,8 @@ TEST_F(VolumeTest, uuid_start_while_running)
     const std::string fname(make_volume_name("volume").string());
     const uint64_t vsize = 1 << 20;
     const ObjectId id(create_file(root_id,
-                                       fname,
-                                       vsize));
+                                  fname,
+                                  vsize));
 
     const std::string pattern("some data");
     const uint64_t wsize = pattern.size();
@@ -1297,7 +1298,8 @@ TEST_F(VolumeTest, uuid_start_while_running)
               write_to_file(id, pattern, wsize, 0));
     check_file(id, pattern, wsize, 0);
 
-    fs_->object_router().migrate(id);
+    EXPECT_THROW(fs_->object_router().migrate(id),
+                 std::exception);
 
     check_file(id, pattern, wsize, 0);
 }

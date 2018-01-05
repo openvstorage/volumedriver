@@ -1005,19 +1005,12 @@ LocalNode::restart_volume_from_backend_(const ObjectId& id,
 
         LOCKVD();
 
-        if (not api::get_volume_pointer_no_throw(static_cast<const vd::VolumeId>(id)))
-        {
-            api::backend_restart(be::Namespace(id.str()),
-                                 reg->owner_tag,
-                                 vd::PrefetchVolumeData::F,
-                                 force == ForceRestart::T ?
-                                 vd::IgnoreFOCIfUnreachable::T :
-                                 vd::IgnoreFOCIfUnreachable::F);
-        }
-        else
-        {
-            LOG_WARN(id << " already running");
-        }
+        api::backend_restart(be::Namespace(id.str()),
+                             reg->owner_tag,
+                             vd::PrefetchVolumeData::F,
+                             force == ForceRestart::T ?
+                             vd::IgnoreFOCIfUnreachable::T :
+                             vd::IgnoreFOCIfUnreachable::F);
     }
     CATCH_STD_ALL_LOG_RETHROW(id << ": failed to restart volume: ");
 
