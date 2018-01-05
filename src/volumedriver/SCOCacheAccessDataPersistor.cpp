@@ -45,7 +45,7 @@ SCOCacheAccessDataPersistor::operator()()
 
         for (const auto& vol : vols)
         {
-            SharedVolumePtr v = VolManager::get()->find_volume(vol);
+            SharedVolumePtr v = vm->find_volume(vol);
             LOG_PERIODIC("collecting SCO access data for volume " << vol);
             SCOAccessDataPtr sad(new SCOAccessData(v->getNamespace(),
                                                    v->readActivity()));
@@ -69,6 +69,20 @@ SCOCacheAccessDataPersistor::operator()()
             SCOAccessDataPersistor sadp(std::move(bi));
             sadp.push(*sad_cond.first,
                       sad_cond.second);
+        }
+        catch (be::BackendAssertionFailedException& e)
+        {
+            const be::Namespace& nspace(sad_cond.first->getNamespace());
+            LOG_ERROR("Failed to persist SCO access data for namespace " << nspace <<
+                      ": " << e.what());
+
+            fungi::ScopedLock l(vm->getLock_());
+            SharedVolumePtr vol = vm->find_volume_no_throw(nspace);
+            if (vol and not vol->is_halted())
+            {
+                LOG_ERROR("Halting volume for namespace " << nspace);
+                vol->halt();
+            }
         }
         CATCH_STD_ALL_LOG_IGNORE("Failed to persist SCO access data for " <<
                                  sad_cond.first->getNamespace());

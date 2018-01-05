@@ -16,6 +16,7 @@
 #include "VolManagerTestSetup.h"
 
 #include "../Api.h"
+#include "../SCOCacheAccessDataPersistor.h"
 
 #include <boost/chrono.hpp>
 
@@ -168,6 +169,21 @@ TEST_P(FencingTest, snapshot)
               snapl.size());
     ASSERT_EQ(snap1,
               snapl.front());
+}
+
+TEST_P(FencingTest, sco_cache_access_data_persistor)
+{
+    auto rns(make_random_namespace());
+    SharedVolumePtr vol(newVolume(*rns));
+
+    EXPECT_FALSE(vol->is_halted());
+
+    claim_namespace(rns->ns(),
+                    new_owner_tag());
+
+    SCOCacheAccessDataPersistor(*VolManager::get()->getSCOCache())();
+
+    EXPECT_TRUE(vol->is_halted());
 }
 
 INSTANTIATE_TEST_CASE_P(FencingTests,
