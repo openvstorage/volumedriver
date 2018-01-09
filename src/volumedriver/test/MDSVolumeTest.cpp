@@ -150,6 +150,37 @@ protected:
         return newVolume(make_volume_params(wrns));
     }
 
+    SharedVolumePtr
+    make_clone(const be::Namespace& cns,
+               const be::Namespace& pns,
+               const OwnerTag ctag,
+               const boost::optional<SnapshotName>& psnap = boost::none)
+    {
+        CloneVolumeConfigParameters
+            cparams(VolumeId(cns.str()),
+                    cns,
+                    pns,
+                    ctag);
+
+        if (psnap)
+        {
+            cparams.parent_snapshot(*psnap);
+        }
+
+        cparams.metadata_backend_config(metadata_backend_config());
+
+        SharedVolumePtr c = nullptr;
+
+        {
+            fungi::ScopedLock g(api::getManagementMutex());
+            c = VolManager::get()->createClone(cparams,
+                                               PrefetchVolumeData::F,
+                                               CreateNamespace::F);
+        }
+
+        return c;
+    }
+
     void
     check_config(Volume& v,
                  const std::vector<MDSNodeConfig>& ncfgs,
@@ -667,6 +698,68 @@ protected:
                   md.scrub_id());
         EXPECT_EQ(1,
                   md.full_rebuild_count());
+    }
+
+    void
+    test_clone_slave(bool empty_snap)
+    {
+        const auto pns(make_random_namespace());
+        SharedVolumePtr p(make_volume(*pns));
+        const std::string pattern1("pattern1");
+
+        writeToVolume(*p,
+                      Lba(0),
+                      p->getClusterSize(),
+                      pattern1);
+
+        const SnapshotName snap1("snap1");
+        p->createSnapshot(snap1);
+        waitForThisBackendWrite(*p);
+
+        const SnapshotName snap2("snap2");
+        p->createSnapshot(snap2);
+        waitForThisBackendWrite(*p);
+
+        const std::string pattern2("pattern2");
+        writeToVolume(*p,
+                      Lba(0),
+                      p->getClusterSize(),
+                      pattern2);
+        const SnapshotName snap3("snap3");
+        p->createSnapshot(snap3);
+        waitForThisBackendWrite(*p);
+
+        const auto cns(make_random_namespace());
+        const OwnerTag ctag(static_cast<uint64_t>(p->getOwnerTag()) + 1);
+
+        SharedVolumePtr c(make_clone(cns->ns(),
+                                     pns->ns(),
+                                     ctag,
+                                     empty_snap ? snap2 : snap1));
+
+        checkVolume(*c,
+                    Lba(0),
+                    c->getClusterSize(),
+                    pattern1);
+
+        const mds::ServerConfigs scfgs(mds_manager_->server_configs());
+        catch_up(scfgs[1].node_config,
+                 cns->ns().str(),
+                 DryRun::F);
+
+        destroyVolume(c,
+                      DeleteLocalData::F,
+                      RemoveVolumeCompletely::F);
+
+        c = nullptr;
+
+        mds_manager_->stop_one(scfgs[0].node_config);
+
+        c = localRestart(cns->ns());
+        checkVolume(*c,
+                    Lba(0),
+                    c->getClusterSize(),
+                    pattern1);
     }
 
     std::unique_ptr<mds::Manager> mds_manager_;
@@ -1614,22 +1707,9 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
                   RemoveVolumeCompletely::F);
 
     const auto cns(make_random_namespace());
-    CloneVolumeConfigParameters
-        cparams(VolumeId(cns->ns().str()),
-                cns->ns(),
-                pns->ns(),
-                ctag);
-
-    cparams.metadata_backend_config(metadata_backend_config());
-
-    SharedVolumePtr c = nullptr;
-
-    {
-        fungi::ScopedLock g(api::getManagementMutex());
-        c = VolManager::get()->createClone(cparams,
-                                           PrefetchVolumeData::F,
-                                           CreateNamespace::F);
-    }
+    SharedVolumePtr c(make_clone(cns->ns(),
+                                 pns->ns(),
+                                 ctag));
 
     const OwnerTag owner_tag(c->getOwnerTag());
 
@@ -1960,6 +2040,17 @@ TEST_P(MDSVolumeTest, config_update_with_slave_too_far_behind)
     check_config(*v,
                  ncfgs2,
                  false);
+}
+
+// https://github.com/openvstorage/volumedriver-ee/issues/40
+TEST_P(MDSVolumeTest, clone_slave)
+{
+    test_clone_slave(false);
+}
+
+TEST_P(MDSVolumeTest, clone_slave_empty_snap)
+{
+    test_clone_slave(true);
 }
 
 namespace

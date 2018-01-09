@@ -80,44 +80,51 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
                         }
                     });
 
+    auto check_cork_id_of_empty_snap([&](const Snapshot& snap)
+                                     {
+                                         if (not start_seen_ and
+                                             start_cork_ != boost::none and
+                                             *start_cork_ == snap.getCork())
+                                         {
+                                             start_seen_ = true;
+                                         }
+
+                                         if (not end_seen_ and
+                                             end_cork_ != boost::none and
+                                             *end_cork_ == snap.getCork())
+                                         {
+                                             end_seen_ = true;
+                                         }
+                                     });
     if (not end_seen_)
     {
-        for (const auto& snap : sp.getSnapshots())
+        if (clone_id == SCOCloneID(0))
         {
-            walk_tlogs(snap.getOrderedTLogIds());
-
-            // check the cork IDs of empty snapshots:
-            if (not start_seen_ and
-                start_cork_ != boost::none and
-                *start_cork_ == snap.getCork())
+            for (const auto& snap : sp.getSnapshots())
             {
-                start_seen_ = true;
+                walk_tlogs(snap.getOrderedTLogIds());
+                check_cork_id_of_empty_snap(snap);
+                if (end_seen_)
+                {
+                    break;
+                }
             }
 
-            if (not end_seen_ and
-                end_cork_ != boost::none and
-                *end_cork_ == snap.getCork())
+            if (not end_seen_)
             {
-                end_seen_ = true;
-            }
-
-            if (end_seen_)
-            {
-                break;
+                walk_tlogs(sp.getCurrentTLogsWrittenToBackend());
             }
         }
-    }
-
-    if(clone_id == SCOCloneID(0))
-    {
-        if (not end_seen_)
+        else
         {
-            walk_tlogs(sp.getCurrentTLogsWrittenToBackend());
+            VERIFY(not snapshot_name.empty());
+            const Snapshot& snap(sp.getSnapshot(snapshot_name));
+            OrderedTLogIds parent_tlogs;
+            sp.getTLogsTillSnapshot(snap.snapshotNumber(),
+                                    parent_tlogs);
+            walk_tlogs(parent_tlogs);
+            check_cork_id_of_empty_snap(snap);
         }
-    }
-    else
-    {
-        VERIFY(not snapshot_name.empty());
     }
 
     TODO("AR: don't bother adding empty log vectors?");
