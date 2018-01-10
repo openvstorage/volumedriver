@@ -175,9 +175,10 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
                          fs_.vdisk_format().volume_suffix());
     try
     {
-        fs_.open(p, O_RDWR, handle_);
-        // allow stealing the volume on the subsequent fsync
-        fs_.set_dtl_in_sync(*handle_, vd::DtlInSync::T);
+        fs_.open(p,
+                 O_RDWR,
+                 handle_,
+                 vd::DtlInSync::T);
         fs_.fsync(*handle_, true);
 
         update_fs_client_info(volume_name);

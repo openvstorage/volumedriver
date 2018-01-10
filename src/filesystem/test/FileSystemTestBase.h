@@ -218,12 +218,14 @@ protected:
     int
     open(const volumedriverfs::FrontendPath& path,
          volumedriverfs::Handle::Ptr& handle,
-         mode_t flags);
+         mode_t flags,
+         boost::optional<volumedriver::DtlInSync> = boost::none);
 
     int
     open(const volumedriverfs::ObjectId& id,
          volumedriverfs::Handle::Ptr& handle,
-         mode_t flags);
+         mode_t flags,
+         boost::optional<volumedriver::DtlInSync> = boost::none);
 
     int
     release(const volumedriverfs::FrontendPath& path,
@@ -587,11 +589,17 @@ protected:
     }
 
     void
+    test_volume_open_with_lost_ownership(const volumedriverfs::FrontendPath&);
+
+    void
     test_dtl_status(const volumedriverfs::FrontendPath&,
                     const volumedriver::FailOverCacheMode);
 
     size_t
     get_cluster_size(const volumedriverfs::ObjectId&) const;
+
+    void
+    claim_namespace(const volumedriver::VolumeId&);
 
     static boost::filesystem::path binary_path_;
 

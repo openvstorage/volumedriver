@@ -1139,7 +1139,8 @@ FileSystem::truncate(const ObjectId& id,
 void
 FileSystem::open(const FrontendPath& path,
                  mode_t openflags,
-                 Handle::Ptr& h)
+                 Handle::Ptr& handle,
+                 boost::optional<vd::DtlInSync> dtl_in_sync)
 {
     LOG_TRACE(path << ": flags " << std::oct << openflags << std::dec);
 
@@ -1152,20 +1153,35 @@ FileSystem::open(const FrontendPath& path,
     }
 
     LOG_TRACE(path << ": object " << dentry->object_id());
-    h.reset(new Handle(path,
-                       dentry));
+
+    Handle::Ptr h(new Handle(path,
+                             dentry));
+    if (dtl_in_sync)
+    {
+        router_.set_dtl_in_sync(dentry->object_id(),
+                                *dtl_in_sync);
+    }
+
+    if (fs_use_open.value())
+    {
+        h->update_cookie(router_.open(dentry->object_id()));
+    }
+
+    handle = std::move(h);
 }
 
 void
 FileSystem::open(const ObjectId& id,
                  mode_t openflags,
-                 Handle::Ptr& h)
+                 Handle::Ptr& h,
+                 boost::optional<vd::DtlInSync> dtl_in_sync)
 {
     LOG_TRACE(id << ": flags " << std::oct << openflags << std::dec);
 
     open(find_path(id),
          openflags,
-         h);
+         h,
+         dtl_in_sync);
 }
 
 void
@@ -1539,14 +1555,6 @@ FileSystem::list_registered_clients()
         info_vec_.push_back(kv.second);
     }
     return info_vec_;
-}
-
-void
-FileSystem::set_dtl_in_sync(const Handle& h,
-                            const vd::DtlInSync dtl_in_sync)
-{
-    router_.set_dtl_in_sync(h.dentry()->object_id(),
-                            dtl_in_sync);
 }
 
 }

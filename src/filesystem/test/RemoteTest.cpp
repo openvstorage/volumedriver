@@ -1056,23 +1056,14 @@ TEST_F(RemoteTest, volume_entry_cache)
         EXPECT_EQ(*maybe_id, entry->object_id());
     }
 
-    // ... we can even open it:
-    Handle::Ptr h;
-
-    EXPECT_EQ(0, open(fname, h, O_RDWR));
-
-    {
-        DirectoryEntryPtr entry(find_in_volume_entry_cache(fname));
-        ASSERT_TRUE(entry != nullptr);
-        EXPECT_EQ(*maybe_id, entry->object_id());
-    }
-
     // .. only once we try to operate on it do we get an error and the entry is gone:
-    std::vector<char> buf(1);
-    EXPECT_EQ(-ENOENT, read(fname, buf.data(), buf.size(), 0, *h));
-    EXPECT_TRUE(find_in_volume_entry_cache(fname) == nullptr);
-
-    EXPECT_EQ(0, release(fname, std::move(h)));
+    Handle::Ptr h;
+    EXPECT_GT(0,
+              open(fname, h, O_RDWR));
+    EXPECT_EQ(nullptr,
+              h);
+    EXPECT_EQ(nullptr,
+              find_in_volume_entry_cache(fname));
 }
 
 TEST_F(RemoteTest, volume_dreaded_threaded_threat)
@@ -1749,7 +1740,9 @@ TEST_F(RemoteTest, volume_location_from_handle)
               open(vname,
                    handle,
                    O_RDONLY));
-    ASSERT_TRUE(handle != nullptr);
+    ASSERT_NE(nullptr,
+              handle);
+    EXPECT_TRUE(handle->is_local());
 
     auto fun([&]
              {
@@ -1766,8 +1759,6 @@ TEST_F(RemoteTest, volume_location_from_handle)
                            size);
                  EXPECT_FALSE(eof);
              });
-
-    EXPECT_TRUE(bl::indeterminate(handle->is_local()));
 
     fun();
     EXPECT_TRUE(handle->is_local());
@@ -1929,6 +1920,15 @@ TEST_F(RemoteTest, locally_get_remote_page)
     {
         EXPECT_TRUE(e == vd::ClusterLocation(0));
     }
+}
+
+TEST_F(RemoteTest, volume_open_volume_with_lost_ownership)
+{
+    const FrontendPath fname(make_volume_name("/volume"));
+    make_remote_file(fname,
+                     1 << 20);
+
+    test_volume_open_with_lost_ownership(fname);
 }
 
 }

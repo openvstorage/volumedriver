@@ -1771,6 +1771,14 @@ TEST_F(VolumeTest, get_page)
     }
 }
 
+TEST_F(VolumeTest, open_volume_with_lost_ownership)
+{
+    const FrontendPath fname(make_volume_name("/volume"));
+    create_file(fname);
+
+    test_volume_open_with_lost_ownership(fname);
+}
+
 }
 
 // Local Variables: **

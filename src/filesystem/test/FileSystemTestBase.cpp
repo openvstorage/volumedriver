@@ -550,28 +550,34 @@ FileSystemTestBase::rename(const ObjectId& from_parent_id,
 int
 FileSystemTestBase::open(const FrontendPath& path,
                          Handle::Ptr& h,
-                         mode_t flags)
+                         mode_t flags,
+                         boost::optional<volumedriver::DtlInSync> dtl_in_sync)
 {
     return FuseInterface::convert_exceptions<mode_t,
-                                                  decltype(h)>(&FileSystem::open,
-                                                               *fs_,
-                                                               path,
-                                                               flags,
-                                                               h);
+                                             decltype(h),
+                                             decltype(dtl_in_sync)>(&FileSystem::open,
+                                                                    *fs_,
+                                                                    path,
+                                                                    flags,
+                                                                    h,
+                                                                    dtl_in_sync);
 }
 
 int
 FileSystemTestBase::open(const ObjectId& id,
                          Handle::Ptr& h,
-                         mode_t flags)
+                         mode_t flags,
+                         boost::optional<volumedriver::DtlInSync> dtl_in_sync)
 {
     return fs_convert_exceptions<const ObjectId&,
                                  mode_t,
-                                 decltype(h)>(*fs_,
-                                         &FileSystem::open,
-                                         id,
-                                         flags,
-                                         h);
+                                 decltype(h),
+                                 decltype(dtl_in_sync)>(*fs_,
+                                                        &FileSystem::open,
+                                                        id,
+                                                        flags,
+                                                        h,
+                                                        dtl_in_sync);
 }
 
 int
@@ -579,9 +585,9 @@ FileSystemTestBase::release(const FrontendPath& path,
                             Handle::Ptr h)
 {
     return FuseInterface::convert_exceptions<decltype(h)>(&FileSystem::release,
-                                                               *fs_,
-                                                               path,
-                                                               std::move(h));
+                                                          *fs_,
+                                                          path,
+                                                          std::move(h));
 }
 
 int
@@ -1266,6 +1272,29 @@ FileSystemTestBase::test_dtl_status(const FrontendPath& vname,
 
     EXPECT_EQ(vd::DtlInSync::T,
               dtl_in_sync);
+}
+
+void
+FileSystemTestBase::test_volume_open_with_lost_ownership(const FrontendPath& p)
+{
+    const boost::optional<vd::VolumeId> vid(fs_->get_volume_id(p));
+    ASSERT_NE(boost::none,
+              vid);
+
+    const XMLRPCVolumeInfo info(client_.info_volume(vid->str()));
+    const vd::OwnerTag new_tag(static_cast<uint64_t>(info.owner_tag) + 1);
+
+    ASSERT_FALSE(info.halted);
+
+    vd::VolumeInterface::claim_namespace(be::Namespace(info._namespace_),
+                                         new_tag);
+    Handle::Ptr h;
+    EXPECT_THROW(fs_->open(p,
+                           O_RDONLY,
+                           h),
+                 std::exception);
+
+    EXPECT_TRUE(client_.info_volume(vid->str()).halted);
 }
 
 }
