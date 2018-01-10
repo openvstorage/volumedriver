@@ -35,6 +35,7 @@ namespace volumedriverfs
 VD_BOOLEAN_ENUM(MoreMessageParts);
 
 MAKE_EXCEPTION(ProtocolError, fungi::IOException);
+MAKE_EXCEPTION(UnknownRequest, ProtocolError);
 
 // this needs to be revisited to get rid of a few unnecessary copy operations
 

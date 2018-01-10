@@ -271,8 +271,8 @@ RemoteNode::handle_response_(WorkItem& work)
         LOG_WARN(node_id() << ": got an UnknownRequest response status in response to " <<
                  work.request_desc);
         // handle differently once we need to take care of backward compatibility.
-        throw ProtocolError("Remote sent UnknownRequest response status",
-                            work.request_desc);
+        throw UnknownRequest("Remote sent UnknownRequest response status",
+                             work.request_desc);
         break;
     case vfsprotocol::ResponseType::Timeout:
         LOG_ERROR(node_id() << ": got a Timeout response status in response to " <<
