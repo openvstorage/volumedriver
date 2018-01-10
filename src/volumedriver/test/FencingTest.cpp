@@ -60,8 +60,8 @@ TEST_P(FencingTest, reconfigure_volume)
     ASSERT_NE(sco_mult,
               v->getSCOMultiplier());
 
-    claim_namespace(rns->ns(),
-                    new_owner_tag());
+    VolumeInterface::claim_namespace(rns->ns(),
+                                     new_owner_tag());
 
     fungi::ScopedLock l(api::getManagementMutex());
 
@@ -75,8 +75,8 @@ TEST_P(FencingTest, reconfigure_dtl)
     auto rns(make_random_namespace());
     SharedVolumePtr v = newVolume(*rns);
 
-    claim_namespace(rns->ns(),
-                    new_owner_tag());
+    VolumeInterface::claim_namespace(rns->ns(),
+                                     new_owner_tag());
 
     auto foc_ctx(start_one_foc());
     EXPECT_THROW(v->setFailOverCacheConfig(foc_ctx->config(FailOverCacheMode::Asynchronous)),
@@ -101,8 +101,8 @@ TEST_P(FencingTest, write)
 
     const VolumeConfig cfg(v->get_config());
 
-    claim_namespace(rns->ns(),
-                    new_owner_tag());
+    VolumeInterface::claim_namespace(rns->ns(),
+                                     new_owner_tag());
 
     const std::string pattern2("after");
     writeToVolume(*v,
@@ -145,8 +145,8 @@ TEST_P(FencingTest, snapshot)
                    snap1);
     waitForThisBackendWrite(*v);
 
-    claim_namespace(rns->ns(),
-                    new_owner_tag());
+    VolumeInterface::claim_namespace(rns->ns(),
+                                     new_owner_tag());
 
     const SnapshotName snap2("snap2");
     createSnapshot(*v,
@@ -178,11 +178,26 @@ TEST_P(FencingTest, sco_cache_access_data_persistor)
 
     EXPECT_FALSE(vol->is_halted());
 
-    claim_namespace(rns->ns(),
-                    new_owner_tag());
+    VolumeInterface::claim_namespace(rns->ns(),
+                                     new_owner_tag());
 
     SCOCacheAccessDataPersistor(*VolManager::get()->getSCOCache())();
 
+    EXPECT_TRUE(vol->is_halted());
+}
+
+TEST_P(FencingTest, verify_namespace_ownership)
+{
+    auto rns(make_random_namespace());
+    SharedVolumePtr vol(newVolume(*rns));
+
+    EXPECT_FALSE(vol->is_halted());
+
+    VolumeInterface::claim_namespace(rns->ns(),
+                                     new_owner_tag());
+
+    EXPECT_THROW(vol->verify_namespace_ownership(),
+                 std::exception);
     EXPECT_TRUE(vol->is_halted());
 }
 

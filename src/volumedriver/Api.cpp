@@ -205,6 +205,12 @@ api::GetClusterSize(vd::WeakVolumePtr vol)
 }
 
 void
+api::verify_namespace_ownership(volumedriver::WeakVolumePtr vol)
+{
+    return SharedVolumePtr(vol)->verify_namespace_ownership();
+}
+
+void
 api::Init(const fs::path& path,
           events::PublisherPtr event_publisher)
 {

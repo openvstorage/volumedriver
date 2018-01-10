@@ -2004,14 +2004,6 @@ VolManagerTestSetup::apply_scrub_reply(Volume& v,
     }
 }
 
-boost::shared_ptr<be::Condition>
-VolManagerTestSetup::claim_namespace(const be::Namespace& nspace,
-                                     const OwnerTag owner_tag)
-{
-    return VolumeFactory::claim_namespace(nspace,
-                                          owner_tag);
-}
-
 scrubbing::ScrubberResult
 VolManagerTestSetup::get_scrub_result(be::BackendInterface& bi,
                                       const scrubbing::ScrubReply& scrub_reply)

@@ -308,32 +308,6 @@ new_volume_prechecks(const VolumeConfig& config)
 
 } // anon namespace
 
-boost::shared_ptr<be::Condition>
-VolumeFactory::claim_namespace(const be::Namespace& nspace,
-                               const OwnerTag owner_tag)
-{
-    const std::string& name(VolumeInterface::owner_tag_backend_name());
-    const fs::path p(yt::FileUtils::create_temp_file_in_temp_dir(nspace.str() + "." + name));
-    ALWAYS_CLEANUP_FILE(p);
-
-    fs::ofstream(p) << owner_tag;
-
-    be::BackendInterfacePtr bi(VolManager::get()->createBackendInterface(nspace));
-
-    try
-    {
-        return boost::make_shared<be::Condition>(name,
-                                                 bi->write_tag(p,
-                                                               name,
-                                                               nullptr,
-                                                               OverwriteObject::T));
-    }
-    catch (be::BackendNotImplementedException&)
-    {
-        return nullptr;
-    }
-}
-
 std::unique_ptr<Volume>
 VolumeFactory::createNewVolume(const VolumeConfig& config)
 {
@@ -345,8 +319,8 @@ VolumeFactory::createNewVolume(const VolumeConfig& config)
     auto vol(create_volume_stage_1<DeleteLocalData::T,
                                    RemoveVolumeCompletely::T>(config,
                                                               config.owner_tag_,
-                                                              claim_namespace(config.getNS(),
-                                                                              config.owner_tag_),
+                                                              VolumeInterface::claim_namespace(config.getNS(),
+                                                                                               config.owner_tag_),
                                                               RestartContext::Creation,
                                                               std::move(nsid),
                                                               nullptr));
@@ -367,8 +341,8 @@ VolumeFactory::createWriteOnlyVolume(const VolumeConfig& config)
     auto vol(create_write_only_volume_stage_1<DeleteLocalData::T,
                                               RemoveVolumeCompletely::T>(config,
                                                                          config.owner_tag_,
-                                                                         claim_namespace(config.getNS(),
-                                                                                         config.owner_tag_),
+                                                                         VolumeInterface::claim_namespace(config.getNS(),
+                                                                                                          config.owner_tag_),
                                                                          RestartContext::Creation,
                                                                          std::move(nsid)));
     vol->newWriteOnlyVolume();
@@ -618,8 +592,8 @@ VolumeFactory::local_restart_volume(const VolumeConfig& config,
                                     const IgnoreFOCIfUnreachable)
 try
 {
-    boost::shared_ptr<be::Condition> backend_write_cond(claim_namespace(config.getNS(),
-                                                                        owner_tag));
+    boost::shared_ptr<be::Condition> backend_write_cond(VolumeInterface::claim_namespace(config.getNS(),
+                                                                                         owner_tag));
 
     std::unique_ptr<MetaDataStoreInterface>
         mdstore(local_restart_metadata_store(config,
@@ -725,8 +699,8 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
     // tlogs anymore.
     vm->getSCOCache()->removeDisabledNamespace(nspace);
 
-    const boost::shared_ptr<be::Condition> backend_write_cond(claim_namespace(config.getNS(),
-                                                                              owner_tag));
+    const boost::shared_ptr<be::Condition> backend_write_cond(VolumeInterface::claim_namespace(config.getNS(),
+                                                                                               owner_tag));
 
     try
     {
@@ -852,8 +826,8 @@ VolumeFactory::backend_restart_write_only_volume(const VolumeConfig& config,
     // tlogs anymore.
     vm->getSCOCache()->removeDisabledNamespace(nspace);
 
-    const boost::shared_ptr<be::Condition> backend_write_cond(claim_namespace(config.getNS(),
-                                                                              owner_tag));
+    const boost::shared_ptr<be::Condition> backend_write_cond(VolumeInterface::claim_namespace(config.getNS(),
+                                                                                               owner_tag));
 
     NSIDMap nsid;
     nsid.set(0,
@@ -978,8 +952,8 @@ VolumeFactory::createClone(const VolumeConfig& config,
     auto vol(create_volume_stage_1<DeleteLocalData::T,
                                    RemoveVolumeCompletely::T>(config,
                                                               config.owner_tag_,
-                                                              claim_namespace(config.getNS(),
-                                                                              config.owner_tag_),
+                                                              VolumeInterface::claim_namespace(config.getNS(),
+                                                                                               config.owner_tag_),
                                                               RestartContext::Cloning,
                                                               std::move(nsid),
                                                               nullptr));
