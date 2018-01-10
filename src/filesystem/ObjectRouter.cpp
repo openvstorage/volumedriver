@@ -96,6 +96,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     , vrouter_keepalive_time_secs(pt)
     , vrouter_keepalive_interval_secs(pt)
     , vrouter_keepalive_retries(pt)
+    , vrouter_remote_must_support_open_request(pt)
     , larakoon_(larakoon)
     , object_registry_(std::make_shared<CachedObjectRegistry>(cluster_id(),
                                                               node_id(),
@@ -1845,6 +1846,7 @@ ObjectRouter::update(const bpt::ptree& pt,
     U(vrouter_keepalive_time_secs);
     U(vrouter_keepalive_interval_secs);
     U(vrouter_keepalive_retries);
+    U(vrouter_remote_must_support_open_request);
 
 #undef U
 
@@ -1879,6 +1881,7 @@ ObjectRouter::persist(bpt::ptree& pt,
     P(vrouter_keepalive_time_secs);
     P(vrouter_keepalive_interval_secs);
     P(vrouter_keepalive_retries);
+    P(vrouter_remote_must_support_open_request);
 
 #undef P
 

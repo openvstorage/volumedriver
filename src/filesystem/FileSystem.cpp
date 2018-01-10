@@ -161,6 +161,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
     , fs_dtl_mode(pt)
     , fs_enable_shm_interface(pt)
     , fs_enable_network_interface(pt)
+    , fs_use_open(pt)
     , registry_(std::make_shared<Registry>(pt))
     , router_(pt,
               std::static_pointer_cast<yt::LockedArakoon>(registry_),
@@ -293,6 +294,8 @@ FileSystem::update(const bpt::ptree& pt,
 
     U(fs_enable_shm_interface);
     U(fs_enable_network_interface);
+    U(fs_use_open);
+
     U(ip::PARAMETER_TYPE(fs_virtual_disk_format)(vdisk_format_->name()));
     U(ip::PARAMETER_TYPE(fs_file_event_rules)(file_event_rules_));
 #undef U
@@ -323,6 +326,7 @@ FileSystem::persist(bpt::ptree& pt,
     P(fs_dtl_port);
     P(fs_enable_shm_interface);
     P(fs_enable_network_interface);
+    P(fs_use_open);
 
     P(ip::PARAMETER_TYPE(fs_virtual_disk_format)(vdisk_format_->name()));
     P(ip::PARAMETER_TYPE(fs_file_event_rules)(file_event_rules_));

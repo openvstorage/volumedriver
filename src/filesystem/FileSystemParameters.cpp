@@ -201,6 +201,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_keepalive_retries,
                                       ShowDocumentation::T,
                                       5);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_remote_must_support_open_request,
+                                      volumerouter_component_name,
+                                      "vrouter_must_support_open_request",
+                                      "Whether it's an error if other nodes cannot handle 'open' requests",
+                                      ShowDocumentation::F,
+                                      false);
+
 // ObjectRouterCluster
 const char volumeroutercluster_component_name[] = "volume_router_cluster";
 
@@ -429,6 +436,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_network_interface,
                                       "Whether to enable the network interface",
                                       ShowDocumentation::T,
                                       false);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_use_open,
+                                      filesystem_component_name,
+                                      "fs_use_open",
+                                      "Whether to use an (expensive) open implementation",
+                                      ShowDocumentation::F,
+                                      true);
 
 // EventPublisher
 const char events_component_name[] = "event_publisher";

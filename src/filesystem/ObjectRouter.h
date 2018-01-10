@@ -476,6 +476,7 @@ private:
     DECLARE_PARAMETER(vrouter_keepalive_time_secs);
     DECLARE_PARAMETER(vrouter_keepalive_interval_secs);
     DECLARE_PARAMETER(vrouter_keepalive_retries);
+    DECLARE_PARAMETER(vrouter_remote_must_support_open_request);
 
     std::shared_ptr<youtils::LockedArakoon> larakoon_;
     std::shared_ptr<CachedObjectRegistry> object_registry_;

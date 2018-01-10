@@ -572,6 +572,7 @@ private:
     DECLARE_PARAMETER(fs_dtl_mode);
     DECLARE_PARAMETER(fs_enable_shm_interface);
     DECLARE_PARAMETER(fs_enable_network_interface);
+    DECLARE_PARAMETER(fs_use_open);
 
     std::shared_ptr<Registry> registry_;
     ObjectRouter router_;
