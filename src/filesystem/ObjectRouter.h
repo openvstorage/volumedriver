@@ -63,6 +63,7 @@ class TransferRequest;
 class GetClusterMultiplierRequest;
 class GetCloneNamespaceMapRequest;
 class GetPageRequest;
+class OpenRequest;
 
 }
 
@@ -173,6 +174,9 @@ public:
 
     void
     ping(const NodeId& id);
+
+    FastPathCookie
+    open(const ObjectId&);
 
     FastPathCookie
     write(const FastPathCookie&,
@@ -399,6 +403,12 @@ public:
     keepalive_retries() const
     {
         return vrouter_keepalive_retries.value();
+    }
+
+    bool
+    remote_must_support_open_request() const
+    {
+        return vrouter_remote_must_support_open_request.value();
     }
 
     MaybeFailOverCacheConfig
@@ -629,6 +639,9 @@ private:
 
     void
     handle_transfer_(const vfsprotocol::TransferRequest&);
+
+    void
+    handle_open_(const vfsprotocol::OpenRequest&);
 
     void
     migrate_(const ObjectRegistration&,

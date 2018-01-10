@@ -41,6 +41,7 @@ request_type_to_string(const RequestType type)
     case RequestType::GetClusterMultiplier:
     case RequestType::GetCloneNamespaceMap:
     case RequestType::GetPage:
+    case RequestType::Open:
         break;
     }
 
@@ -68,6 +69,8 @@ request_type_to_string(const RequestType type)
         return "GetCloneNamespaceMap";
     case RequestType::GetPage:
         return "GetPage";
+    case RequestType::Open:
+        return "Open";
     default:
         return "Unknown";
     }

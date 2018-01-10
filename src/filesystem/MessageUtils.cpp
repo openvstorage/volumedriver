@@ -247,4 +247,16 @@ MessageUtils::create_transfer_request(const vfs::Object& obj,
     return msg;
 }
 
+OpenRequest
+MessageUtils::create_open_request(const vfs::Object& obj)
+{
+    OpenRequest msg;
+    msg.set_object_id(obj.id.str());
+    msg.set_object_type(static_cast<uint32_t>(obj.type));
+
+    msg.CheckInitialized();
+
+    return msg;
+}
+
 }

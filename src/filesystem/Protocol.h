@@ -47,6 +47,7 @@ enum class RequestType
     GetClusterMultiplier = 9,
     GetCloneNamespaceMap = 10,
     GetPage = 11,
+    Open = 12,
 };
 
 enum class ResponseType
@@ -87,6 +88,7 @@ MAKE_REQUEST_TRAITS(TransferRequest, RequestType::Transfer);
 MAKE_REQUEST_TRAITS(GetClusterMultiplierRequest, RequestType::GetClusterMultiplier);
 MAKE_REQUEST_TRAITS(GetCloneNamespaceMapRequest, RequestType::GetCloneNamespaceMap);
 MAKE_REQUEST_TRAITS(GetPageRequest, RequestType::GetPage);
+MAKE_REQUEST_TRAITS(OpenRequest, RequestType::Open);
 
 const char*
 request_type_to_string(const RequestType t);

@@ -906,6 +906,27 @@ RemoteNode::unlink(const Object& obj)
 }
 
 void
+RemoteNode::open(const Object& obj)
+{
+    LOG_TRACE(node_id() << ": obj " << obj.id);
+
+    const auto req(vfsprotocol::MessageUtils::create_open_request(obj));
+
+    try
+    {
+        handle_(req,
+                vrouter_.redirect_timeout());
+    }
+    catch (UnknownRequest&)
+    {
+        if (vrouter_.remote_must_support_open_request())
+        {
+            throw;
+        }
+    }
+}
+
+void
 RemoteNode::transfer(const Object& obj)
 {
     LOG_TRACE(node_id() << ": obj " << obj.id);

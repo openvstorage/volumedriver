@@ -474,6 +474,12 @@ ObjectRouter::redirected_work_(ZWorkerPool::MessageParts parts_in)
                 handle_transfer_(get_req<vfsprotocol::TransferRequest>(parts_in));
                 break;
             }
+        case vfsprotocol::RequestType::Open:
+            {
+                CHECK(parts_in.size() == 3);
+                handle_open_(get_req<vfsprotocol::OpenRequest>(parts_in));
+                break;
+            }
         default:
             LOG_ERROR("Got unexpected request type " << static_cast<uint32_t>(req_type));
             rsp_type = vfsprotocol::ResponseType::UnknownRequest;
@@ -1519,6 +1525,30 @@ ObjectRouter::migrate_(const ObjectRegistration& reg,
             }
         }
     }
+}
+
+FastPathCookie
+ObjectRouter::open(const ObjectId& id)
+{
+    LOG_TRACE(id);
+
+    FastPathCookie cookie;
+
+    route_(&ClusterNode::open,
+           AttemptTheft::T,
+           id,
+           cookie);
+
+    return cookie;
+}
+
+void
+ObjectRouter::handle_open_(const vfsprotocol::OpenRequest& req)
+{
+    const Object obj(obj_from_msg(req));
+
+    LOG_TRACE(obj);
+    local_node_()->open(obj);
 }
 
 // Volumes are *always* created locally - no need to try at the remote site

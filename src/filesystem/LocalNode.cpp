@@ -2003,4 +2003,27 @@ LocalNode::fast_path_cookie(const Object& obj)
     }
 }
 
+void
+LocalNode::open(const Object& obj)
+{
+    RWLockPtr l(get_lock_(obj.id));
+    fungi::ScopedReadLock rg(*l);
+
+    if (is_file(obj))
+    {
+        // TODO: check ownership?
+    }
+    else
+    {
+        with_volume_pointer_(&LocalNode::open_,
+                             obj.id);
+    }
+}
+
+void
+LocalNode::open_(vd::WeakVolumePtr vol)
+{
+    vd::SharedVolumePtr(vol)->verify_namespace_ownership();
+}
+
 }

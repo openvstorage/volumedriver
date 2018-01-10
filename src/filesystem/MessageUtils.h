@@ -90,6 +90,9 @@ struct MessageUtils
     create_transfer_request(const volumedriverfs::Object&,
                             const volumedriverfs::NodeId& target_node_id,
                             const boost::chrono::milliseconds& sync_timeout_ms);
+
+    static OpenRequest
+    create_open_request(const volumedriverfs::Object&);
 };
 
 }
