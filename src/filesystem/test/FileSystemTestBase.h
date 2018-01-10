@@ -150,11 +150,16 @@ protected:
         EXPECT_LT(0U, size);
 
         std::vector<char> buf(size);
+        const ssize_t ret = read_from_file(entity, &buf[0], buf.size(), off);
         EXPECT_EQ(static_cast<ssize_t>(size),
-                  read_from_file(entity, &buf[0], buf.size(), off));
-        for (size_t i = 0; i < size; ++i)
+                  ret);
+
+        if (ret == static_cast<ssize_t>(size))
         {
-            EXPECT_EQ(pattern[i % pattern.size()], buf[i]) << "mismatch at offset " << i;
+            for (size_t i = 0; i < size; ++i)
+            {
+                EXPECT_EQ(pattern[i % pattern.size()], buf[i]) << "mismatch at offset " << i;
+            }
         }
     }
 
