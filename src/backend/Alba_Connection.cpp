@@ -480,27 +480,25 @@ Connection::objectExists_(const Namespace& nspace,
     return convert_exceptions_<bool>("object exists",
                                      [&]() -> bool
         {
-            try
+            std::vector<std::string> objs;
+            apc::has_more more;
+
+            std::tie(objs, more) = client_->list_objects(nspace.str(),
+                                                         name,
+                                                         apc::include_first::T,
+                                                         name,
+                                                         apc::include_last::T,
+                                                         1);
+            ASSERT(more == apc::has_more::F);
+            if (objs.empty())
             {
-                uint64_t size;
-                ::alba::Checksum* c;
-                std::tie(size, c) = client_->get_object_info(nspace.str(),
-                                                             name,
-                                                             apc::consistent_read::T,
-                                                             apc::should_cache::F);
-                std::unique_ptr<::alba::Checksum> chksum(c);
-                return true;
+                return false;
             }
-            catch (apc::proxy_exception& e)
+            else
             {
-                if (e._return_code == app::return_code::OBJECT_DOES_NOT_EXIST)
-                {
-                    return false;
-                }
-                else
-                {
-                    throw;
-                }
+                ASSERT(objs.size() == 1);
+                VERIFY(objs[0] == name);
+                return true;
             }
         });
 }
