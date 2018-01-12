@@ -85,7 +85,7 @@ BackendInterface::do_wrap_(ConnectionPoolSelectorInterface& selector,
                                                      ForceNewConnection::F :
                                                      ForceNewConnection::T));
 
-            return ((conn.get())->*mem_fun)(std::forward<Args>(args)...);
+            return ((conn.get())->*mem_fun)(args...);
         }
         catch (BackendAssertionFailedException&)
         {
