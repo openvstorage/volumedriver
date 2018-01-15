@@ -220,6 +220,7 @@ libvolumedriver_la_SOURCES = \
 	VolumeDriverEvents.pb.cc \
 	VolumeFactory.cpp \
 	VolumeFailOverState.cpp \
+	VolumeInterface.cpp \
 	VolumeOverview.cpp \
 	VolumeThreadPool.cpp \
 	WriteOnlyVolume.cpp \

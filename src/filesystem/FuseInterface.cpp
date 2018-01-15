@@ -33,6 +33,7 @@ namespace volumedriverfs
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
+namespace vd = volumedriver;
 namespace yt = youtils;
 
 namespace
@@ -608,11 +609,14 @@ FuseInterface::open(const char* path,
                     fuse_file_info* fi)
 {
     Handle::Ptr h;
+    boost::optional<vd::DtlInSync> dtl_in_sync;
     int ret = route_to_fs_instance_<mode_t,
-                                    Handle::Ptr&>(&FileSystem::open,
-                                                  path,
-                                                  fi->flags,
-                                                  h);
+                                    Handle::Ptr&,
+                                    decltype(dtl_in_sync)>(&FileSystem::open,
+                                                           path,
+                                                           fi->flags,
+                                                           h,
+                                                           dtl_in_sync);
     set_handle(*fi,
                std::move(h));
 

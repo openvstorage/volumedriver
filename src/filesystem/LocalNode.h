@@ -63,7 +63,7 @@ MAKE_EXCEPTION(TimeoutException, fungi::IOException);
 MAKE_EXCEPTION(SyncTimeoutException, TimeoutException);
 
 typedef std::function<void(const MaybeSnapshotName&,
-                           std::unique_ptr<volumedriver::MetaDataBackendConfig> mdb_config)> VAAICreateCloneFun;
+                           std::unique_ptr<volumedriver::MetaDataBackendConfig>)> VAAICreateCloneFun;
 
 class LocalNode final
     : public ClusterNode
@@ -71,11 +71,11 @@ class LocalNode final
     friend class volumedriverfstest::LocalNodeTest;
 
 public:
-    LocalNode(ObjectRouter& vrouter,
-              const ClusterNodeConfig& cfg,
-              const boost::property_tree::ptree& pt);
+    LocalNode(ObjectRouter&,
+              const ClusterNodeConfig&,
+              const boost::property_tree::ptree&);
 
-    virtual ~LocalNode();
+    ~LocalNode();
 
     LocalNode(const LocalNode&) = delete;
 
@@ -83,45 +83,48 @@ public:
     operator=(const LocalNode&) = delete;
 
     static void
-    destroy(ObjectRegistry& reg,
-            const boost::property_tree::ptree& pt);
+    destroy(ObjectRegistry&,
+            const boost::property_tree::ptree&);
 
-    virtual void
-    read(const Object& id,
+    void
+    read(const Object&,
          uint8_t* buf,
          size_t* size,
-         const off_t off) override final;
+         const off_t off) final;
 
-    virtual void
-    write(const Object& obj,
+    void
+    write(const Object&,
           const uint8_t* buf,
           size_t* size,
           const off_t off,
-          volumedriver::DtlInSync&) override final;
+          volumedriver::DtlInSync&) final;
 
-    virtual void
+    void
     sync(const Object&,
-         volumedriver::DtlInSync&) override final;
+         volumedriver::DtlInSync&) final;
 
-    virtual uint64_t
-    get_size(const Object& obj) override final;
+    uint64_t
+    get_size(const Object&) final;
 
-    virtual volumedriver::ClusterMultiplier
-    get_cluster_multiplier(const Object& obj) override final;
+    volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const Object&) final;
 
-    virtual volumedriver::CloneNamespaceMap
-    get_clone_namespace_map(const Object& obj) override final;
+    volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const Object&) final;
 
-    virtual std::vector<volumedriver::ClusterLocation>
-    get_page(const Object& obj,
-             const volumedriver::ClusterAddress ca) override final;
+    std::vector<volumedriver::ClusterLocation>
+    get_page(const Object&,
+             const volumedriver::ClusterAddress) final;
 
-    virtual void
-    resize(const Object& obj,
-           uint64_t newsize) override final;
+    void
+    resize(const Object&,
+           uint64_t newsize) final;
 
-    virtual void
-    unlink(const Object& obj) override final;
+    void
+    unlink(const Object&) final;
+
+    void
+    open(const Object&) final;
 
     void
     stop(const Object& obj,
@@ -393,20 +396,20 @@ private:
           volumedriver::DtlInSync&);
 
     uint64_t
-    get_size_(volumedriver::WeakVolumePtr vol);
+    get_size_(volumedriver::WeakVolumePtr);
 
     volumedriver::ClusterMultiplier
-    get_cluster_multiplier_(volumedriver::WeakVolumePtr vol);
+    get_cluster_multiplier_(volumedriver::WeakVolumePtr);
 
     volumedriver::CloneNamespaceMap
-    get_clone_namespace_map_(volumedriver::WeakVolumePtr vol);
+    get_clone_namespace_map_(volumedriver::WeakVolumePtr);
 
     std::vector<volumedriver::ClusterLocation>
-    get_page_(volumedriver::WeakVolumePtr vol,
+    get_page_(volumedriver::WeakVolumePtr,
               const volumedriver::ClusterAddress);
 
     void
-    resize_(volumedriver::WeakVolumePtr vol,
+    resize_(volumedriver::WeakVolumePtr,
             uint64_t newsize);
 
     void
@@ -414,6 +417,9 @@ private:
              volumedriver::DeleteLocalData,
              volumedriver::RemoveVolumeCompletely,
              Deadline);
+
+    void
+    open_(volumedriver::WeakVolumePtr);
 
     void
     do_adjust_failovercache_config_(const volumedriver::VolumeId&,

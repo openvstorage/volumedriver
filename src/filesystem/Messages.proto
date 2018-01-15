@@ -109,6 +109,12 @@ message TransferRequest
 	optional uint64 sync_timeout_ms = 4;
 }
 
+message OpenRequest
+{
+	required string object_id = 1;
+	required uint32 object_type = 2;
+}
+
 // Local Variables: **
 // mode: protobuf **
 // End: **

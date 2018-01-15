@@ -96,6 +96,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     , vrouter_keepalive_time_secs(pt)
     , vrouter_keepalive_interval_secs(pt)
     , vrouter_keepalive_retries(pt)
+    , vrouter_remote_must_support_open_request(pt)
     , larakoon_(larakoon)
     , object_registry_(std::make_shared<CachedObjectRegistry>(cluster_id(),
                                                               node_id(),
@@ -471,6 +472,12 @@ ObjectRouter::redirected_work_(ZWorkerPool::MessageParts parts_in)
             {
                 CHECK(parts_in.size() == 3);
                 handle_transfer_(get_req<vfsprotocol::TransferRequest>(parts_in));
+                break;
+            }
+        case vfsprotocol::RequestType::Open:
+            {
+                CHECK(parts_in.size() == 3);
+                handle_open_(get_req<vfsprotocol::OpenRequest>(parts_in));
                 break;
             }
         default:
@@ -1515,6 +1522,30 @@ ObjectRouter::migrate_(const ObjectRegistration& reg,
     }
 }
 
+FastPathCookie
+ObjectRouter::open(const ObjectId& id)
+{
+    LOG_TRACE(id);
+
+    FastPathCookie cookie;
+
+    route_(&ClusterNode::open,
+           AttemptTheft::T,
+           id,
+           cookie);
+
+    return cookie;
+}
+
+void
+ObjectRouter::handle_open_(const vfsprotocol::OpenRequest& req)
+{
+    const Object obj(obj_from_msg(req));
+
+    LOG_TRACE(obj);
+    local_node_()->open(obj);
+}
+
 // Volumes are *always* created locally - no need to try at the remote site
 void
 ObjectRouter::create(const Object& obj,
@@ -1840,6 +1871,7 @@ ObjectRouter::update(const bpt::ptree& pt,
     U(vrouter_keepalive_time_secs);
     U(vrouter_keepalive_interval_secs);
     U(vrouter_keepalive_retries);
+    U(vrouter_remote_must_support_open_request);
 
 #undef U
 
@@ -1874,6 +1906,7 @@ ObjectRouter::persist(bpt::ptree& pt,
     P(vrouter_keepalive_time_secs);
     P(vrouter_keepalive_interval_secs);
     P(vrouter_keepalive_retries);
+    P(vrouter_remote_must_support_open_request);
 
 #undef P
 

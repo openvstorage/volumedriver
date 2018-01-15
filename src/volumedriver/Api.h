@@ -167,6 +167,9 @@ public:
     GetClusterSize(volumedriver::WeakVolumePtr);
 
     static void
+    verify_namespace_ownership(volumedriver::WeakVolumePtr);
+
+    static void
     Init(const boost::filesystem::path& cfg,
          events::PublisherPtr event_publisher = nullptr);
 

@@ -58,42 +58,45 @@ public:
     RemoteNode&
     operator=(const RemoteNode&) = delete;
 
-    virtual void
+    void
     read(const Object&,
          uint8_t* buf,
          size_t* size,
-         off_t off) override final;
+         off_t off) final;
 
-    virtual void
+    void
     write(const Object&,
           const uint8_t* buf,
           size_t* size,
           off_t off,
-          volumedriver::DtlInSync&) override final;
+          volumedriver::DtlInSync&) final;
 
-    virtual void
+    void
     sync(const Object&,
-         volumedriver::DtlInSync&) override final;
+         volumedriver::DtlInSync&) final;
 
-    virtual uint64_t
-    get_size(const Object&) override final;
+    uint64_t
+    get_size(const Object&) final;
 
-    virtual volumedriver::ClusterMultiplier
-    get_cluster_multiplier(const Object& obj) override final;
+    volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const Object& obj) final;
 
-    virtual volumedriver::CloneNamespaceMap
-    get_clone_namespace_map(const Object& obj) override final;
+    volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const Object& obj) final;
 
-    virtual std::vector<volumedriver::ClusterLocation>
+    std::vector<volumedriver::ClusterLocation>
     get_page(const Object& obj,
-             const volumedriver::ClusterAddress ca) override final;
+             const volumedriver::ClusterAddress ca) final;
 
-    virtual void
+    void
     resize(const Object&,
-           uint64_t newsize) override final;
+           uint64_t newsize) final;
 
-    virtual void
-    unlink(const Object&) override final;
+    void
+    unlink(const Object&) final;
+
+    void
+    open(const Object&) final;
 
     void
     transfer(const Object&);

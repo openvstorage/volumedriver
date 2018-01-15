@@ -150,11 +150,16 @@ protected:
         EXPECT_LT(0U, size);
 
         std::vector<char> buf(size);
+        const ssize_t ret = read_from_file(entity, &buf[0], buf.size(), off);
         EXPECT_EQ(static_cast<ssize_t>(size),
-                  read_from_file(entity, &buf[0], buf.size(), off));
-        for (size_t i = 0; i < size; ++i)
+                  ret);
+
+        if (ret == static_cast<ssize_t>(size))
         {
-            EXPECT_EQ(pattern[i % pattern.size()], buf[i]) << "mismatch at offset " << i;
+            for (size_t i = 0; i < size; ++i)
+            {
+                EXPECT_EQ(pattern[i % pattern.size()], buf[i]) << "mismatch at offset " << i;
+            }
         }
     }
 
@@ -213,12 +218,14 @@ protected:
     int
     open(const volumedriverfs::FrontendPath& path,
          volumedriverfs::Handle::Ptr& handle,
-         mode_t flags);
+         mode_t flags,
+         boost::optional<volumedriver::DtlInSync> = boost::none);
 
     int
     open(const volumedriverfs::ObjectId& id,
          volumedriverfs::Handle::Ptr& handle,
-         mode_t flags);
+         mode_t flags,
+         boost::optional<volumedriver::DtlInSync> = boost::none);
 
     int
     release(const volumedriverfs::FrontendPath& path,
@@ -582,11 +589,17 @@ protected:
     }
 
     void
+    test_volume_open_with_lost_ownership(const volumedriverfs::FrontendPath&);
+
+    void
     test_dtl_status(const volumedriverfs::FrontendPath&,
                     const volumedriver::FailOverCacheMode);
 
     size_t
     get_cluster_size(const volumedriverfs::ObjectId&) const;
+
+    void
+    claim_namespace(const volumedriver::VolumeId&);
 
     static boost::filesystem::path binary_path_;
 

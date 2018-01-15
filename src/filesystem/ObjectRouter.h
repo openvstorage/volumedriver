@@ -63,6 +63,7 @@ class TransferRequest;
 class GetClusterMultiplierRequest;
 class GetCloneNamespaceMapRequest;
 class GetPageRequest;
+class OpenRequest;
 
 }
 
@@ -173,6 +174,9 @@ public:
 
     void
     ping(const NodeId& id);
+
+    FastPathCookie
+    open(const ObjectId&);
 
     FastPathCookie
     write(const FastPathCookie&,
@@ -401,6 +405,12 @@ public:
         return vrouter_keepalive_retries.value();
     }
 
+    bool
+    remote_must_support_open_request() const
+    {
+        return vrouter_remote_must_support_open_request.value();
+    }
+
     MaybeFailOverCacheConfig
     failoverconfig_as_it_should_be() const;
 
@@ -476,6 +486,7 @@ private:
     DECLARE_PARAMETER(vrouter_keepalive_time_secs);
     DECLARE_PARAMETER(vrouter_keepalive_interval_secs);
     DECLARE_PARAMETER(vrouter_keepalive_retries);
+    DECLARE_PARAMETER(vrouter_remote_must_support_open_request);
 
     std::shared_ptr<youtils::LockedArakoon> larakoon_;
     std::shared_ptr<CachedObjectRegistry> object_registry_;
@@ -633,6 +644,9 @@ private:
 
     void
     handle_transfer_(const vfsprotocol::TransferRequest&);
+
+    void
+    handle_open_(const vfsprotocol::OpenRequest&);
 
     void
     migrate_(const ObjectRegistration&,

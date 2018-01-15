@@ -349,12 +349,14 @@ public:
     void
     open(const FrontendPath&,
          mode_t openflags,
-         Handle::Ptr&);
+         Handle::Ptr&,
+         boost::optional<volumedriver::DtlInSync> = boost::none);
 
     void
     open(const ObjectId&,
          mode_t openflags,
-         Handle::Ptr&);
+         Handle::Ptr&,
+         boost::optional<volumedriver::DtlInSync> = boost::none);
 
     void
     release(const FrontendPath&,
@@ -539,10 +541,6 @@ public:
     std::vector<ClientInfo>
     list_registered_clients();
 
-    void
-    set_dtl_in_sync(const Handle&,
-                    const volumedriver::DtlInSync);
-
 private:
     DECLARE_LOGGER("FileSystem");
 
@@ -572,6 +570,7 @@ private:
     DECLARE_PARAMETER(fs_dtl_mode);
     DECLARE_PARAMETER(fs_enable_shm_interface);
     DECLARE_PARAMETER(fs_enable_network_interface);
+    DECLARE_PARAMETER(fs_use_open);
 
     std::shared_ptr<Registry> registry_;
     ObjectRouter router_;
@@ -667,6 +666,7 @@ private:
     void
     update_dtl_settings_(const boost::property_tree::ptree&,
                          youtils::UpdateReport&);
+
 };
 
 }

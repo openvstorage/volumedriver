@@ -41,14 +41,14 @@ public:
     // "inconsistent parameter pack deduction with ‘long unsigned int&’ and
     // ‘long unsigned int’" error messages when using a reference.
     virtual void
-    write(const Object& obj,
+    write(const Object&,
           const uint8_t* buf,
           size_t* size,
           off_t off,
           volumedriver::DtlInSync&) = 0;
 
     virtual void
-    read(const Object& obj,
+    read(const Object&,
          uint8_t* buf,
          size_t* size,
          off_t off) = 0;
@@ -58,7 +58,7 @@ public:
          volumedriver::DtlInSync&) = 0;
 
     virtual uint64_t
-    get_size(const Object& obj) = 0;
+    get_size(const Object&) = 0;
 
     virtual volumedriver::ClusterMultiplier
     get_cluster_multiplier(const Object&) = 0;
@@ -71,11 +71,14 @@ public:
              const volumedriver::ClusterAddress) = 0;
 
     virtual void
-    resize(const Object& obj,
+    resize(const Object&,
            uint64_t newsize) = 0;
 
     virtual void
-    unlink(const Object& obj) = 0;
+    unlink(const Object&) = 0;
+
+    virtual void
+    open(const Object&) = 0;
 
     const NodeId&
     node_id() const

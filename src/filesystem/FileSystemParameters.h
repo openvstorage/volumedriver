@@ -95,6 +95,8 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_sco_multiplier,
                                        uint32_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_registry_cache_capacity,
                                        uint32_t);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_remote_must_support_open_request,
+                                                  bool);
 
 // ObjectRouterCluster
 // this section should be identical on all nodes of the cluster
@@ -164,6 +166,8 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_shm_interface,
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_network_interface,
                                        bool);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_use_open,
+                                                  bool);
 
 // FUSE:
 extern const char fuse_component_name[];

@@ -209,17 +209,22 @@ FileSystemTestBase::write_to_file(const FrontendPath& fname,
 {
     Handle::Ptr h;
 
-    EXPECT_EQ(0, open(fname, h, O_WRONLY));
-
-    FileSystemTestBase* fst = this;
-
-    BOOST_SCOPE_EXIT((fst)(&fname)(&h))
+    const int ret = open(fname, h, O_WRONLY);
+    if (ret != 0)
     {
-        EXPECT_EQ(0, fst->release(fname, std::move(h)));
+        return ret;
     }
-    BOOST_SCOPE_EXIT_END;
+    else
+    {
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             EXPECT_EQ(0,
+                                                       release(fname,
+                                                               std::move(h)));
+                                         }));
 
-    return write(fname, &buf[0], size, off, *h);
+        return write(fname, &buf[0], size, off, *h);
+    }
 }
 
 ssize_t
@@ -230,17 +235,20 @@ FileSystemTestBase::write_to_file(const ObjectId& id,
 {
     Handle::Ptr h;
 
-    EXPECT_EQ(0, open(id, h, O_WRONLY));
-
-    FileSystemTestBase* fst = this;
-
-    BOOST_SCOPE_EXIT((fst)(&h))
+    const int ret = open(id, h, O_WRONLY);
+    if (ret != 0)
     {
-        EXPECT_NO_THROW(fst->release(std::move(h)));
+        return ret;
     }
-    BOOST_SCOPE_EXIT_END;
-
-    return write(*h, &buf[0], size, off);
+    else
+    {
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             EXPECT_EQ(0,
+                                                       release(std::move(h)));
+                                         }));
+        return write(*h, &buf[0], size, off);
+    }
 }
 
 ssize_t
@@ -287,23 +295,18 @@ FileSystemTestBase::read_from_file(const FrontendPath& fname,
 {
     Handle::Ptr h;
 
-    // ASSERT_EQ just does not work here so we'll have to have this crude construct.
     int ret = open(fname, h, O_RDONLY);
-    EXPECT_EQ(0, ret);
     if (ret != 0)
     {
         return ret;
     }
     else
     {
-        FileSystemTestBase* fst = this;
-
-        BOOST_SCOPE_EXIT((fst)(&fname)(&h))
-        {
-            EXPECT_EQ(0, fst->release(fname, std::move(h)));
-        }
-        BOOST_SCOPE_EXIT_END;
-
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             EXPECT_EQ(0,
+                                                       release(fname, std::move(h)));
+                                         }));
         return read(fname, buf, size, off, *h);
     }
 }
@@ -317,20 +320,17 @@ FileSystemTestBase::read_from_file(const ObjectId& id,
     Handle::Ptr h;
 
     int ret = open(id, h, O_RDONLY);
-    EXPECT_EQ(0, ret);
     if (ret != 0)
     {
         return ret;
     }
     else
     {
-        FileSystemTestBase* fst = this;
-
-        BOOST_SCOPE_EXIT((fst)(&h))
-        {
-            EXPECT_EQ(0, fst->release(std::move(h)));
-        }
-        BOOST_SCOPE_EXIT_END;
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             EXPECT_EQ(0,
+                                                       release(std::move(h)));
+                                         }));
 
         return read(*h, buf, size, off);
     }
@@ -550,28 +550,34 @@ FileSystemTestBase::rename(const ObjectId& from_parent_id,
 int
 FileSystemTestBase::open(const FrontendPath& path,
                          Handle::Ptr& h,
-                         mode_t flags)
+                         mode_t flags,
+                         boost::optional<volumedriver::DtlInSync> dtl_in_sync)
 {
     return FuseInterface::convert_exceptions<mode_t,
-                                                  decltype(h)>(&FileSystem::open,
-                                                               *fs_,
-                                                               path,
-                                                               flags,
-                                                               h);
+                                             decltype(h),
+                                             decltype(dtl_in_sync)>(&FileSystem::open,
+                                                                    *fs_,
+                                                                    path,
+                                                                    flags,
+                                                                    h,
+                                                                    dtl_in_sync);
 }
 
 int
 FileSystemTestBase::open(const ObjectId& id,
                          Handle::Ptr& h,
-                         mode_t flags)
+                         mode_t flags,
+                         boost::optional<volumedriver::DtlInSync> dtl_in_sync)
 {
     return fs_convert_exceptions<const ObjectId&,
                                  mode_t,
-                                 decltype(h)>(*fs_,
-                                         &FileSystem::open,
-                                         id,
-                                         flags,
-                                         h);
+                                 decltype(h),
+                                 decltype(dtl_in_sync)>(*fs_,
+                                                        &FileSystem::open,
+                                                        id,
+                                                        flags,
+                                                        h,
+                                                        dtl_in_sync);
 }
 
 int
@@ -579,9 +585,9 @@ FileSystemTestBase::release(const FrontendPath& path,
                             Handle::Ptr h)
 {
     return FuseInterface::convert_exceptions<decltype(h)>(&FileSystem::release,
-                                                               *fs_,
-                                                               path,
-                                                               std::move(h));
+                                                          *fs_,
+                                                          path,
+                                                          std::move(h));
 }
 
 int
@@ -807,14 +813,13 @@ FileSystemTestBase::mount_remote()
     // a guesstimate to avoid too many reallocs
     args.reserve(50);
 
-    BOOST_SCOPE_EXIT((&args))
-    {
-        for (auto a : args)
-        {
-            free(a);
-        }
-    }
-    BOOST_SCOPE_EXIT_END;
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         for (auto a : args)
+                                         {
+                                             free(a);
+                                         }
+                                     }));
 
 #define CARG(cstr)                          \
     args.push_back(::strdup(cstr))
@@ -1267,6 +1272,29 @@ FileSystemTestBase::test_dtl_status(const FrontendPath& vname,
 
     EXPECT_EQ(vd::DtlInSync::T,
               dtl_in_sync);
+}
+
+void
+FileSystemTestBase::test_volume_open_with_lost_ownership(const FrontendPath& p)
+{
+    const boost::optional<vd::VolumeId> vid(fs_->get_volume_id(p));
+    ASSERT_NE(boost::none,
+              vid);
+
+    const XMLRPCVolumeInfo info(client_.info_volume(vid->str()));
+    const vd::OwnerTag new_tag(static_cast<uint64_t>(info.owner_tag) + 1);
+
+    ASSERT_FALSE(info.halted);
+
+    vd::VolumeInterface::claim_namespace(be::Namespace(info._namespace_),
+                                         new_tag);
+    Handle::Ptr h;
+    EXPECT_THROW(fs_->open(p,
+                           O_RDONLY,
+                           h),
+                 std::exception);
+
+    EXPECT_TRUE(client_.info_volume(vid->str()).halted);
 }
 
 }

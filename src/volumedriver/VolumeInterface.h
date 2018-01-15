@@ -16,6 +16,7 @@
 #ifndef VOLUME_INTERFACE_H
 #define VOLUME_INTERFACE_H
 
+#include "OwnerTag.h"
 #include "PerformanceCounters.h"
 #include "SCO.h"
 #include "TLogId.h"
@@ -28,6 +29,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include <youtils/BooleanEnum.h>
+#include <youtils/Logging.h>
 
 #include <backend/BackendInterface.h>
 #include <backend/Condition.h>
@@ -147,12 +149,21 @@ public:
         return n;
     }
 
+    static boost::shared_ptr<backend::Condition>
+    claim_namespace(const backend::Namespace&,
+                    const OwnerTag);
+
+    void
+    verify_namespace_ownership();
+
 protected:
     explicit VolumeInterface(const boost::shared_ptr<backend::Condition>& cond)
         : backend_write_cond_(cond)
     {}
 
 private:
+    DECLARE_LOGGER("VolumeInterface");
+
     PerformanceCounters perf_counters_;
     boost::shared_ptr<backend::Condition> backend_write_cond_;
 };
