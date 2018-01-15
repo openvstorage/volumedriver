@@ -528,15 +528,16 @@ ObjectRouter::redirected_work_(ZWorkerPool::MessageParts parts_in)
 }
 
 template<typename Ret,
-         typename... Args>
+         typename... InArgs,
+         typename... OutArgs>
 Ret
 ObjectRouter::maybe_steal_(Ret (ClusterNode::*fn)(const Object&,
-                                                  Args...),
+                                                  OutArgs...),
                            IsRemoteNode& remote,
                            AttemptTheft attempt_theft,
                            const ObjectRegistration& reg,
                            FastPathCookie& cookie,
-                           Args&&... args)
+                           InArgs&&... args)
 {
     const NodeId& owner_id = reg.node_id;
     const ObjectId& id = reg.volume_id;
@@ -561,7 +562,8 @@ ObjectRouter::maybe_steal_(Ret (ClusterNode::*fn)(const Object&,
             lnode->fast_path_cookie(obj);
 
             ClusterNode& cn = *node;
-            return (cn.*fn)(obj, std::forward<Args>(args)...);
+            return (cn.*fn)(obj,
+                            args...);
         }
         catch (ClusterNodeNotReachableException&)
         {
@@ -744,39 +746,41 @@ maybe_take_a_nap(uint32_t attempt)
 }
 
 template<typename Ret,
-         typename... Args>
+         typename... InArgs,
+         typename... OutArgs>
 Ret
 ObjectRouter::do_route_(Ret (ClusterNode::*fn)(const Object&,
-                                               Args...),
+                                               OutArgs...),
                         IsRemoteNode& remote,
                         AttemptTheft attempt_theft,
                         const ObjectId& id,
                         FastPathCookie& cookie,
-                        Args&&... args)
+                        InArgs&&... args)
 {
     LOG_TRACE(id);
 
     ObjectRegistrationPtr reg(object_registry_->find_throw(id,
                                                            IgnoreCache::F));
 
-    return do_route_(fn,
-                     remote,
-                     attempt_theft,
-                     reg,
-                     cookie,
-                     std::forward<Args>(args)...);
+    return do_route_with_reg_(fn,
+                              remote,
+                              attempt_theft,
+                              reg,
+                              cookie,
+                              args...);
 }
 
 template<typename Ret,
-         typename... Args>
+         typename... InArgs,
+         typename... OutArgs>
 Ret
-ObjectRouter::do_route_(Ret (ClusterNode::*fn)(const Object&,
-                                               Args...),
-                        IsRemoteNode& remote,
-                        AttemptTheft attempt_theft,
-                        ObjectRegistrationPtr reg,
-                        FastPathCookie& cookie,
-                        Args&&... args)
+ObjectRouter::do_route_with_reg_(Ret (ClusterNode::*fn)(const Object&,
+                                                        OutArgs...),
+                                 IsRemoteNode& remote,
+                                 AttemptTheft attempt_theft,
+                                 ObjectRegistrationPtr reg,
+                                 FastPathCookie& cookie,
+                                 InArgs&&... args)
 {
     const ObjectId& id = reg->volume_id;
 
@@ -801,7 +805,7 @@ ObjectRouter::do_route_(Ret (ClusterNode::*fn)(const Object&,
                                 attempt_theft,
                                 *reg,
                                 cookie,
-                                std::forward<Args>(args)...);
+                                args...);
         }
         catch (vd::VolManager::VolumeDoesNotExistException&)
         {
@@ -827,14 +831,16 @@ ObjectRouter::do_route_(Ret (ClusterNode::*fn)(const Object&,
                                                       id.str().c_str());
 }
 
-template<typename Ret, typename... Args>
+template<typename Ret,
+         typename... InArgs,
+         typename... OutArgs>
 Ret
 ObjectRouter::route_(Ret (ClusterNode::*fn)(const Object&,
-                                            Args...),
+                                            OutArgs...),
                      AttemptTheft attempt_theft,
                      const ObjectId& id,
                      FastPathCookie& cookie,
-                     Args... args)
+                     InArgs&&... args)
 {
     IsRemoteNode remote = IsRemoteNode::F;
     return do_route_(fn,
@@ -842,18 +848,19 @@ ObjectRouter::route_(Ret (ClusterNode::*fn)(const Object&,
                      attempt_theft,
                      id,
                      cookie,
-                     std::forward<Args>(args)...);
+                     args...);
 }
 
 // TODO: It'd be nice to make this work with arbitrary return types.
 template<typename Pred,
-         typename... Args>
+         typename... InArgs,
+         typename... OutArgs>
 FastPathCookie
 ObjectRouter::maybe_migrate_(Pred&& migrate_pred,
                              void (ClusterNode::*fn)(const Object&,
-                                                     Args...),
+                                                     OutArgs...),
                              const ObjectId& id,
-                             Args... args)
+                             InArgs&&... args)
 {
     ObjectRegistrationPtr reg(object_registry_->find_throw(id,
                                                            IgnoreCache::F));
@@ -861,12 +868,12 @@ ObjectRouter::maybe_migrate_(Pred&& migrate_pred,
     IsRemoteNode remote = IsRemoteNode::F;
     FastPathCookie cookie;
 
-    do_route_(fn,
-              remote,
-              AttemptTheft::T,
-              reg,
-              cookie,
-              std::forward<Args>(args)...);
+    do_route_with_reg_(fn,
+                       remote,
+                       AttemptTheft::T,
+                       reg,
+                       cookie,
+                       args...);
 
     if (remote == IsRemoteNode::T and migrate_pred(reg->volume_id,
                                                    reg->treeconfig.object_type))
@@ -1012,13 +1019,14 @@ ObjectRouter::migrate_pred_helper_(const char* desc,
     }
 }
 
-template<typename... Args>
+template<typename... InArgs,
+         typename... OutArgs>
 FastPathCookie
 ObjectRouter::select_path_(const FastPathCookie& cookie,
-                           FastPathCookie (ObjectRouter::*slow_fun)(Args...),
+                           FastPathCookie (ObjectRouter::*slow_fun)(OutArgs...),
                            FastPathCookie (LocalNode::*fast_fun)(const FastPathCookie&,
-                                                                 Args...),
-                           Args... args)
+                                                                 OutArgs...),
+                           InArgs&&... args)
 {
     if (cookie)
     {
@@ -1032,7 +1040,7 @@ ObjectRouter::select_path_(const FastPathCookie& cookie,
         {}
     }
 
-    return (*this.*slow_fun)(std::forward<Args>(args)...);
+    return (*this.*slow_fun)(args...);
 }
 
 FastPathCookie
@@ -1050,18 +1058,14 @@ ObjectRouter::write(const FastPathCookie& cookie,
                                                       off_t,
                                                       vd::DtlInSync&);
 
-    return select_path_<decltype(id),
-                        decltype(buf),
-                        size_t*,
-                        decltype(off),
-                        decltype(dtl_in_sync)>(cookie,
-                                               &ObjectRouter::write_,
-                                               static_cast<FastPathFun>(&LocalNode::write),
-                                               id,
-                                               buf,
-                                               &size,
-                                               off,
-                                               dtl_in_sync);
+    return select_path_(cookie,
+                        &ObjectRouter::write_,
+                        static_cast<FastPathFun>(&LocalNode::write),
+                        id,
+                        buf,
+                        &size,
+                        off,
+                        dtl_in_sync);
 }
 
 FastPathCookie
@@ -1096,17 +1100,13 @@ ObjectRouter::write_(const ObjectId& id,
                                            const off_t,
                                            vd::DtlInSync&);
 
-    return maybe_migrate_<decltype(pred),
-                          decltype(buf),
-                          decltype(size),
-                          decltype(off),
-                          vd::DtlInSync&>(std::move(pred),
-                                          static_cast<WriteFun>(&ClusterNode::write),
-                                          id,
-                                          buf,
-                                          size,
-                                          off,
-                                          dtl_in_sync);
+    return maybe_migrate_(std::move(pred),
+                          static_cast<WriteFun>(&ClusterNode::write),
+                          id,
+                          buf,
+                          size,
+                          off,
+                          dtl_in_sync);
 }
 
 namespace
@@ -1151,16 +1151,13 @@ ObjectRouter::read(const FastPathCookie& cookie,
                    size_t& size,
                    off_t off)
 {
-    return select_path_<decltype(id),
-                        decltype(buf),
-                        size_t*,
-                        decltype(off)>(cookie,
-                                       &ObjectRouter::read_,
-                                       &LocalNode::read,
-                                       id,
-                                       buf,
-                                       &size,
-                                       off);
+    return select_path_(cookie,
+                        &ObjectRouter::read_,
+                        &LocalNode::read,
+                        id,
+                        buf,
+                        &size,
+                        off);
 }
 
 FastPathCookie
@@ -1234,12 +1231,11 @@ ObjectRouter::sync(const FastPathCookie& cookie,
                    vd::DtlInSync& dtl_in_sync)
 {
     FastPathCookie
-        fpc(select_path_<decltype(id),
-                         decltype(dtl_in_sync)>(cookie,
-                                                &ObjectRouter::sync_,
-                                                &LocalNode::sync,
-                                                id,
-                                                dtl_in_sync));
+        fpc(select_path_(cookie,
+                         &ObjectRouter::sync_,
+                         &LocalNode::sync,
+                         id,
+                         dtl_in_sync));
     if (not fpc)
     {
         LOCK_REDIRECTS();
@@ -1257,12 +1253,11 @@ ObjectRouter::sync_(const ObjectId& id,
 
     FastPathCookie cookie;
 
-    route_<void,
-           decltype(dtl_in_sync)>(&ClusterNode::sync,
-                                  AttemptTheft::T,
-                                  id,
-                                  cookie,
-                                  dtl_in_sync);
+    route_(&ClusterNode::sync,
+           AttemptTheft::T,
+           id,
+           cookie,
+           dtl_in_sync);
 
     return cookie;
 }

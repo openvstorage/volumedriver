@@ -529,47 +529,51 @@ private:
     local_node_() const;
 
     template<typename Ret,
-             typename... Args>
+             typename... InArgs,
+             typename... OutArgs>
     Ret
     maybe_steal_(Ret (ClusterNode::*fn)(const Object&,
-                                        Args...),
+                                        OutArgs...),
                  IsRemoteNode&,
                  AttemptTheft,
                  const ObjectRegistration&,
                  FastPathCookie&,
-                 Args&&...);
+                 InArgs&&...);
 
     template<typename Ret,
-             typename... Args>
+             typename... InArgs,
+             typename... OutArgs>
     Ret
     do_route_(Ret (ClusterNode::*fn)(const Object&,
-                                     Args...),
+                                     OutArgs...),
               IsRemoteNode&,
               AttemptTheft,
               const ObjectId&,
               FastPathCookie&,
-              Args&&...);
+              InArgs&&...);
 
     template<typename Ret,
-             typename... Args>
+             typename... InArgs,
+             typename... OutArgs>
     Ret
-    do_route_(Ret (ClusterNode::*fn)(const Object&,
-                                     Args...),
-              IsRemoteNode&,
-              AttemptTheft,
-              ObjectRegistrationPtr,
-              FastPathCookie&,
-              Args&&...);
+    do_route_with_reg_(Ret (ClusterNode::*fn)(const Object&,
+                                              OutArgs...),
+                       IsRemoteNode&,
+                       AttemptTheft,
+                       ObjectRegistrationPtr,
+                       FastPathCookie&,
+                       InArgs&&...);
 
     template<typename Ret,
-             typename... Args>
+             typename... InArgs,
+             typename... OutArgs>
     Ret
     route_(Ret (ClusterNode::*fn)(const Object&,
-                                  Args...),
+                                  OutArgs...),
            AttemptTheft,
            const ObjectId&,
            FastPathCookie&,
-           Args...);
+           InArgs&&...);
 
     bool
     migrate_pred_helper_(const char* desc,
@@ -584,13 +588,14 @@ private:
     // which we want to avoid. We could pass function pointers / references but that
     // limits its flexibility.
     template<typename MigratePred,
-             typename... Args>
+             typename... InArgs,
+             typename... OutArgs>
     FastPathCookie
     maybe_migrate_(MigratePred&&,
                    void (ClusterNode::*fn)(const Object&,
-                                           Args...),
+                                           OutArgs...),
                    const ObjectId&,
-                   Args...);
+                   InArgs&&...);
 
     void
     handle_message_(zmq::socket_t&);
@@ -663,13 +668,14 @@ private:
     sync_(const ObjectId&,
           volumedriver::DtlInSync&);
 
-    template<typename... Args>
+    template<typename... InArgs,
+             typename... OutArgs>
     FastPathCookie
     select_path_(const FastPathCookie&,
-                 FastPathCookie (ObjectRouter::*slow_fun)(Args...),
+                 FastPathCookie (ObjectRouter::*slow_fun)(OutArgs...),
                  FastPathCookie (LocalNode::*fast_fun)(const FastPathCookie&,
-                                                       Args...),
-                 Args...);
+                                                       OutArgs...),
+                 InArgs&&...);
 
     bool
     fencing_support_() const;
