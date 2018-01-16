@@ -174,42 +174,6 @@ inline std::ostream & operator<<(std::ostream &o,
     return o;
 }
 
-template<typename T>
-class Accessor
-{
-public:
-    Accessor() :
-        lock_("Accessor"),
-        x_()
-    {}
-
-    Accessor(const Accessor<T>& other) :
-        lock_("Accessor"),
-        x_(other.get())
-    {}
-
-    explicit Accessor(const T& xp) :
-        lock_("Accessor"),
-        x_(xp)
-    {}
-
-    T get() const {
-        fungi::ScopedReadLock rl_(lock_);
-        return x_;
-    }
-
-    T put(const T& xp) {
-        fungi::ScopedWriteLock wl_(lock_);
-        T tmp = x_;
-        x_ = xp;
-        return tmp;
-    }
-
-private:
-    mutable fungi::RWLock lock_;
-    T x_;
-};
-
 inline const char*
 snapshotFilename()
 {
