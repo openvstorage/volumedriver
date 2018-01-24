@@ -49,10 +49,12 @@ RocksLogger::translate_level_(rdb::InfoLogLevel lvl)
 }
 
 void
-RocksLogger::Logv(const char*,
-                  va_list)
+RocksLogger::Logv(const char* fmt,
+                  va_list ap)
 {
-    ASSERT(false);
+    Logv(rdb::InfoLogLevel::INFO_LEVEL,
+         fmt,
+         ap);
 }
 
 void
