@@ -2053,6 +2053,55 @@ TEST_P(MDSVolumeTest, clone_slave_empty_snap)
     test_clone_slave(true);
 }
 
+// https://github.com/openvstorage/volumedriver/issues/380
+TEST_P(MDSVolumeTest, slave_stress)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v(make_volume(*wrns));
+
+    const auto ncfgs(node_configs());
+    ASSERT_LE(2,
+              ncfgs.size());
+
+    const std::string pattern("utterly uninteresting");
+    const size_t wsize(v->getClusterSize() * 16);
+    static const size_t tlog_count =
+        yt::System::get_env_with_default("MDS_SLAVE_STRESS_NUM_TLOGS",
+                                         7);
+
+    for (size_t i = 0; i < tlog_count; ++i)
+    {
+        writeToVolume(*v,
+                      Lba(0),
+                      wsize,
+                      pattern);
+        v->scheduleBackendSync();
+        waitForThisBackendWrite(*v);
+    }
+
+    mds::ClientNG::Ptr client(mds::ClientNG::create(ncfgs[1]));
+    client->drop(wrns->ns().str());
+    ASSERT_TRUE(client->list_namespaces().empty());
+
+    static const size_t iterations =
+        yt::System::get_env_with_default("MDS_SLAVE_STRESS_ITERATIONS",
+                                         16);
+    static const size_t sleep_ms =
+        yt::System::get_env_with_default("MDS_SLAVE_STRESS_SLEEP_MSECS",
+                                         50);
+
+    for (size_t i = 0; i < iterations; ++i)
+    {
+        client->open(wrns->ns().str());
+        if (sleep_ms)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+        }
+        client->drop(wrns->ns().str());
+        ASSERT_TRUE(client->list_namespaces().empty());
+    }
+}
+
 namespace
 {
 

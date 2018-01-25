@@ -109,6 +109,9 @@ private:
     const rocksdb::ReadOptions read_options_;
     const rocksdb::WriteOptions write_options_;
     const std::string nspace_;
+
+    void
+    verify_handle_() const;
 };
 
 typedef std::shared_ptr<RocksTable> RocksTablePtr;

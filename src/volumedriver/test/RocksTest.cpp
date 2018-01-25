@@ -362,7 +362,7 @@ TEST_F(RocksTest, dropped_table)
 
     const mds::TableInterface::Keys keys{ mds::Key(pair.first) };
 
-    auto verify_absence([&](mds::TableInterfacePtr& table)
+    auto verify_absence([&](const mds::TableInterfacePtr& table)
                         {
                             ASSERT_TRUE(table != nullptr);
 
@@ -372,7 +372,7 @@ TEST_F(RocksTest, dropped_table)
                             ASSERT_TRUE(ms[0] == boost::none);
                         });
 
-    auto verify_presence([&](mds::TableInterfacePtr& table)
+    auto verify_presence([&](const mds::TableInterfacePtr& table)
                          {
                              ASSERT_TRUE(table != nullptr);
 
@@ -404,7 +404,8 @@ TEST_F(RocksTest, dropped_table)
                               nspaces.end(),
                               nspace) == nspaces.end());
 
-        verify_presence(table);
+        EXPECT_THROW(table->multiget(keys),
+                     std::exception);
     }
 
     mds::TableInterfacePtr table(db.open(nspace));
@@ -456,6 +457,26 @@ TEST_F(RocksTest, DISABLED_barrier)
 
     EXPECT_EQ(val1,
               *maybe_str);
+}
+
+// https://github.com/openvstorage/volumedriver/issues/380
+TEST_F(RocksTest, flush_after_drop)
+{
+    mds::RocksDataBase db(path_);
+    const std::string nspace("some-namespace");
+
+    mds::TableInterfacePtr table(db.open(nspace));
+
+    table->multiset({mds::Record{"key"s, "val"s}},
+                    Barrier::F,
+                    vd::OwnerTag(0));
+
+    db.drop(nspace);
+
+    EXPECT_THROW(table->multiset({},
+                                 Barrier::T,
+                                 vd::OwnerTag(0)),
+                 std::exception);
 }
 
 }

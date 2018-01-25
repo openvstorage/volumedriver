@@ -75,10 +75,22 @@ RocksTable::RocksTable(const std::string& nspace,
 void
 RocksTable::drop()
 {
-    LOCKR();
+    LOCKW();
     LOG_INFO(nspace_ << ": dropping the table");
 
     HANDLE(db_->DropColumnFamily(column_family_.get()));
+    column_family_ = nullptr;
+}
+
+void
+RocksTable::verify_handle_() const
+{
+    if (column_family_ == nullptr)
+    {
+        LOG_WARN(nspace_ << ": no column family handle - was it dropped?");
+        throw RocksDataBaseException("RocksTable: no column family handle",
+                                     nspace_.c_str());
+    }
 }
 
 void
@@ -90,7 +102,7 @@ RocksTable::multiset(const TableInterface::Records& records,
 
     LOCKR();
 
-    ASSERT(column_family_ != nullptr);
+    verify_handle_();
 
     for (const auto& r : records)
     {
@@ -132,7 +144,8 @@ RocksTable::multiget(const TableInterface::Keys& keys)
 
     LOCKR();
 
-    ASSERT(column_family_ != nullptr);
+    verify_handle_();
+
     const std::vector<rdb::ColumnFamilyHandle*> handles(keys.size(),
                                                         column_family_.get());
 
@@ -217,8 +230,8 @@ rocksdb::ColumnFamilyMetaData
 RocksTable::column_family_metadata()
 {
     LOCKR();
+    verify_handle_();
 
-    VERIFY(column_family_ != nullptr);
     rocksdb::ColumnFamilyMetaData cfmd;
     db_->GetColumnFamilyMetaData(column_family_.get(),
                                  &cfmd);
@@ -231,7 +244,8 @@ RocksTable::compact(bool reduce_level,
                     int target_level)
 {
     LOCKR();
-    VERIFY(column_family_ != nullptr);
+    verify_handle_();
+
     HANDLE(db_->CompactRange(column_family_.get(),
                              nullptr,
                              nullptr,
@@ -243,7 +257,8 @@ boost::optional<std::string>
 RocksTable::get_property(const std::string& prop)
 {
     LOCKR();
-    VERIFY(column_family_ != nullptr);
+    verify_handle_();
+
     std::string val;
     const bool res = db_->GetProperty(rocksdb::Slice(prop),
                                       &val);
