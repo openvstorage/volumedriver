@@ -56,8 +56,10 @@ class Wrapper
     const ClusterId cluster_id_;
     const ara::ClusterID ara_cluster_id_;
     const std::vector<ara::ArakoonNodeConfig> ara_node_configs_;
+    std::shared_ptr<yt::LockedArakoon> larakoon_;
 
     using Ptr = boost::shared_ptr<ObjectRegistry>;
+    Ptr registry_;
 
     static const NodeId&
     default_node_id_()
@@ -67,13 +69,11 @@ class Wrapper
     }
 
     Ptr
-    registry_(const NodeId& node_id = default_node_id_()) const
+    make_registry_(const NodeId& node_id)
     {
-        auto larakoon(std::make_shared<yt::LockedArakoon>(ara_cluster_id_,
-                                                          ara_node_configs_));
         return boost::make_shared<ObjectRegistry>(cluster_id_,
                                                   node_id,
-                                                  larakoon);
+                                                  larakoon_);
     }
 
 public:
@@ -83,6 +83,9 @@ public:
         : cluster_id_(cluster_id)
         , ara_cluster_id_(ara_cluster_id)
         , ara_node_configs_(ara_node_configs)
+        , larakoon_(std::make_shared<yt::LockedArakoon>(ara_cluster_id_,
+                                                        ara_node_configs_))
+        , registry_(make_registry_(default_node_id_()))
     {}
 
     ~Wrapper() = default;
@@ -95,19 +98,19 @@ public:
     std::vector<ObjectId>
     list() const
     {
-        return registry_()->list();
+        return registry_->list();
     }
 
     std::vector<ObjectRegistrationPtr>
     get_all_registrations() const
     {
-        return registry_()->get_all_registrations();
+        return registry_->get_all_registrations();
     }
 
     ObjectRegistrationPtr
     find(const ObjectId& oid) const
     {
-        return registry_()->find(oid);
+        return registry_->find(oid);
     }
 
     ObjectRegistrationPtr
@@ -115,15 +118,15 @@ public:
                          const ObjectId& oid,
                          const std::string& nspace)
     {
-        return registry_(owner)->register_base_volume(oid,
-                                                      be::Namespace(nspace));
+        return make_registry_(owner)->register_base_volume(oid,
+                                                           be::Namespace(nspace));
     }
 
     ObjectRegistrationPtr
     register_file(const NodeId& owner,
                   const ObjectId& oid)
     {
-        return registry_(owner)->register_file(oid);
+        return make_registry_(owner)->register_file(oid);
     }
 
     ObjectRegistrationPtr
@@ -139,24 +142,24 @@ public:
             ms = vd::SnapshotName(*maybe_parent_snap);
         }
 
-        return registry_(owner)->register_clone(clone_id,
-                                                be::Namespace(clone_nspace),
-                                                parent_id,
-                                                ms);
+        return make_registry_(owner)->register_clone(clone_id,
+                                                     be::Namespace(clone_nspace),
+                                                     parent_id,
+                                                     ms);
     }
 
     ObjectRegistrationPtr
     set_volume_as_template(const NodeId& owner,
                            const ObjectId& oid)
     {
-        return registry_(owner)->set_volume_as_template(oid);
+        return make_registry_(owner)->set_volume_as_template(oid);
     }
 
 
     void
-    unregister(ObjectRegistrationPtr& reg) const
+    unregister(ObjectRegistrationPtr& reg)
     {
-        registry_(reg->node_id)->unregister(reg->volume_id);
+        make_registry_(reg->node_id)->unregister(reg->volume_id);
     }
 
     ObjectRegistrationPtr
@@ -164,9 +167,9 @@ public:
             const NodeId& from,
             const NodeId& to)
     {
-        return registry_()->migrate(oid,
-                                    from,
-                                    to);
+        return registry_->migrate(oid,
+                                  from,
+                                  to);
     }
 };
 
