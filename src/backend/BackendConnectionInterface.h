@@ -194,7 +194,7 @@ protected:
     getCheckSum(const Namespace& nspace,
                 const std::string& name);
 
-private:
+public:
     virtual void
     listNamespaces_(std::list<std::string>& nspaces) = 0;
 
@@ -228,14 +228,12 @@ private:
     get_tag_(const Namespace&,
              const std::string&) = 0;
 
-public:
     virtual bool
     partial_read_(const Namespace& ns,
                   const PartialReads& reads,
                   InsistOnLatestVersion,
                   PartialReadCounter&) = 0;
 
-private:
     virtual void
     write_(const Namespace&,
            const boost::filesystem::path&,
