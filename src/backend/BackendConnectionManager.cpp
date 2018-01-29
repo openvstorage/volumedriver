@@ -42,7 +42,8 @@ namespace ip = initialized_params;
 namespace yt = youtils;
 
 BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
-                                                   const RegisterComponent registerize)
+                                                   const RegisterComponent registerize,
+                                                   const EnableConnectionHooks enable_connection_hooks)
     : VolumeDriverComponent(registerize,
                             pt)
     , params_(pt)
@@ -62,14 +63,16 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
         {
             connection_pools_.push_back(ConnectionPool::create(c->clone(),
                                                                pool_capacity,
-                                                               blacklist_secs));
+                                                               blacklist_secs,
+                                                               enable_connection_hooks));
         }
     }
     else
     {
         connection_pools_.push_back(ConnectionPool::create(config_->clone(),
                                                            pool_capacity,
-                                                           blacklist_secs));
+                                                           blacklist_secs,
+                                                           enable_connection_hooks));
     }
 
     THROW_WHEN(connection_pools_.empty());
@@ -77,10 +80,12 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
 
 BackendConnectionManagerPtr
 BackendConnectionManager::create(const boost::property_tree::ptree& pt,
-                                 const RegisterComponent registrate)
+                                 const RegisterComponent registrate,
+                                 const EnableConnectionHooks enable_connection_hooks)
 {
     return std::make_shared<yt::EnableMakeShared<BackendConnectionManager>>(pt,
-                                                                            registrate);
+                                                                            registrate,
+                                                                            enable_connection_hooks);
 }
 
 BackendConnectionManager::ConnectionPoolPtr

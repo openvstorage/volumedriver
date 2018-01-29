@@ -17,6 +17,7 @@
 #include "Alba_Connection.h"
 #include "BackendConfig.h"
 #include "ConnectionPool.h"
+#include "ConnectionWithHooks.h"
 #include "LocalConfig.h"
 #include "Local_Connection.h"
 #include "S3Config.h"
@@ -40,14 +41,17 @@ namespace yt = youtils;
 
 ConnectionPool::ConnectionPool(std::unique_ptr<BackendConfig> config,
                                size_t capacity,
-                               const std::atomic<uint32_t>& blacklist_secs)
+                               const std::atomic<uint32_t>& blacklist_secs,
+                               EnableConnectionHooks enable_connection_hooks)
     : config_(std::move(config))
     , capacity_(capacity)
     , blacklist_secs_(blacklist_secs)
     , blacklisted_until_(Clock::time_point::min())
+    , enable_connection_hooks_(enable_connection_hooks)
 {
     VERIFY(config_->backend_type.value() != BackendType::MULTI);
-    LOG_INFO("Created pool for " << *config_ << ", capacity " << capacity);
+    LOG_INFO("Created pool for " << *config_ << ", capacity " << capacity <<
+             ", " << enable_connection_hooks);
 }
 
 ConnectionPool::~ConnectionPool()
@@ -58,11 +62,13 @@ ConnectionPool::~ConnectionPool()
 std::shared_ptr<ConnectionPool>
 ConnectionPool::create(std::unique_ptr<BackendConfig> config,
                        size_t capacity,
-                       const std::atomic<uint32_t>& blacklist_secs)
+                       const std::atomic<uint32_t>& blacklist_secs,
+                       EnableConnectionHooks enable_connection_hooks)
 {
     return std::make_shared<yt::EnableMakeShared<ConnectionPool>>(std::move(config),
                                                                   capacity,
-                                                                  blacklist_secs);
+                                                                  blacklist_secs,
+                                                                  enable_connection_hooks);
 }
 
 std::unique_ptr<BackendConnectionInterface>
@@ -88,6 +94,20 @@ ConnectionPool::clear_(Connections& conns)
 }
 
 std::unique_ptr<BackendConnectionInterface>
+ConnectionPool::maybe_make_one_with_hooks_()
+{
+    std::unique_ptr<BackendConnectionInterface> c(make_one_());
+    if (enable_connection_hooks_ == EnableConnectionHooks::T)
+    {
+        return std::make_unique<ConnectionWithHooks>(std::move(c));
+    }
+    else
+    {
+        return c;
+    }
+}
+
+std::unique_ptr<BackendConnectionInterface>
 ConnectionPool::make_one_()
 try
 {
@@ -95,18 +115,18 @@ try
     {
     case BackendType::LOCAL:
         {
-            const LocalConfig* config(dynamic_cast<const LocalConfig*>(config_.get()));
-            return std::make_unique<local::Connection>(*config);
+            const LocalConfig& config(dynamic_cast<const LocalConfig&>(*config_));
+            return std::make_unique<local::Connection>(config);
         }
     case BackendType::S3:
         {
-            const S3Config* config(dynamic_cast<const S3Config*>(config_.get()));
-            return std::make_unique<s3::Connection>(*config);
+            const S3Config& config(dynamic_cast<const S3Config&>(*config_));
+            return std::make_unique<s3::Connection>(config);
         }
     case BackendType::ALBA:
         {
-            const AlbaConfig* config(dynamic_cast<const AlbaConfig*>(config_.get()));
-            return std::make_unique<albaconn::Connection>(*config);
+            const AlbaConfig& config(dynamic_cast<const AlbaConfig&>(*config_));
+            return std::make_unique<albaconn::Connection>(config);
         }
     case BackendType::MULTI:
         {
@@ -160,7 +180,7 @@ ConnectionPool::get_connection(ForceNewConnection force_new)
 
     if (not conn)
     {
-        conn = BackendConnectionInterfacePtr(make_one_().release(), d);
+        conn = BackendConnectionInterfacePtr(maybe_make_one_with_hooks_().release(), d);
         LOCK();
         ++counters_.gets_new;
     }

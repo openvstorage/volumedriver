@@ -64,7 +64,8 @@ public:
     // reference is returned.
     static BackendConnectionManagerPtr
     create(const boost::property_tree::ptree&,
-           const RegisterComponent = RegisterComponent::T);
+           const RegisterComponent = RegisterComponent::T,
+           const EnableConnectionHooks = EnableConnectionHooks::F);
 
     ~BackendConnectionManager() = default;
 
@@ -175,7 +176,8 @@ private:
     std::atomic<uint64_t> next_pool_;
 
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
-                                      const RegisterComponent = RegisterComponent::T);
+                                      const RegisterComponent,
+                                      const EnableConnectionHooks);
 
     friend class toolcut::BackendToolCut;
     friend class toolcut::BackendConnectionToolCut;
