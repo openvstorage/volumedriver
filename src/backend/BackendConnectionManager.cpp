@@ -20,10 +20,6 @@
 #include "BackendParameters.h"
 #include "BackendSinkInterface.h"
 #include "Local_Connection.h"
-#include "Local_Sink.h"
-#include "Local_Source.h"
-#include "ManagedBackendSink.h"
-#include "ManagedBackendSource.h"
 #include "NamespacePoolSelector.h"
 #include "RoundRobinPoolSelector.h"
 #include "MultiConfig.h"
@@ -139,93 +135,6 @@ BackendConnectionManager::newBackendInterface(const Namespace& nspace)
 {
     return BackendInterfacePtr(new BackendInterface(nspace,
                                                     shared_from_this()));
-}
-
-std::unique_ptr<BackendSinkInterface>
-BackendConnectionManager::newBackendSink(const Namespace& nspace,
-                                         const std::string& name)
-{
-    switch (config_->backend_type.value())
-    {
-    case BackendType::LOCAL:
-    case BackendType::MULTI:
-        {
-            BackendConnectionInterfacePtr bc = getConnection();
-            std::unique_ptr<local::Connection>
-                c(dynamic_cast<local::Connection*>(bc.get()));
-            VERIFY(c.get() != 0);
-            bc.release();
-            return std::unique_ptr<BackendSinkInterface>(new local::Sink(std::move(c),
-                                                                         nspace,
-                                                                         name,
-                                                                         boost::posix_time::seconds(0)));
-        }
-    case BackendType::S3:
-        {
-            LOG_FATAL("The S3 backend does not support output streaming");
-            throw BackendNotImplementedException();
-        }
-    case BackendType::ALBA:
-        {
-            LOG_FATAL("The ALBA backend does not support output streaming");
-            throw BackendNotImplementedException();
-        }
-
-    }
-    UNREACHABLE
-}
-
-std::unique_ptr<BackendSourceInterface>
-BackendConnectionManager::newBackendSource(const Namespace& nspace,
-                                           const std::string& name)
-{
-    switch (config_->backend_type.value())
-    {
-    case BackendType::LOCAL:
-    case BackendType::MULTI:
-        {
-            BackendConnectionInterfacePtr bc = getConnection();
-            std::unique_ptr<local::Connection>
-                c(dynamic_cast<local::Connection*>(bc.get()));
-            VERIFY(c.get() != 0);
-            bc.release();
-            return std::unique_ptr<BackendSourceInterface>(new local::Source(std::move(c),
-                                                                             nspace,
-                                                                             name,
-                                                                             boost::posix_time::seconds(0)));
-        }
-    case BackendType::S3:
-        LOG_FATAL("The S3 backend does not support input streaming");
-        throw BackendFatalException();
-        // return std::unique_ptr<BackendSourceInterface>();
-
-    case BackendType::ALBA:
-        LOG_FATAL("The ALBA backend does not support input streaming");
-        throw BackendFatalException();
-
-    }
-
-    UNREACHABLE
-}
-
-std::unique_ptr<std::ostream>
-BackendConnectionManager::getOutputStream(const Namespace& nspace,
-                                          const std::string& name,
-                                          size_t bufsize)
-{
-    ManagedBackendSink sink(shared_from_this(), nspace, name);
-    return std::unique_ptr<std::ostream>(new bio::stream<ManagedBackendSink>(sink,
-                                                                             bufsize));
-}
-
-std::unique_ptr<std::istream>
-BackendConnectionManager::getInputStream(const Namespace& nspace,
-                                         const std::string& name,
-                                         size_t bufsize)
-{
-    ManagedBackendSource source(shared_from_this(), nspace, name);
-    return std::unique_ptr<std::istream>(new bio::stream<ManagedBackendSource>(source,
-                                                                               bufsize));
 }
 
 void

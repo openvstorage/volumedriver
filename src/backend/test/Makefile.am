@@ -16,8 +16,6 @@ backend_test_SOURCES = \
 	BackendNamespaceTest.cpp \
 	BackendObjectTest.cpp \
 	BackendParametersTest.cpp \
-	BackendPerfTest.cpp \
-	BackendStreamTest.cpp \
 	BackendTestBase.cpp \
 	ConnectionManagerTest.cpp \
 	GarbageCollectorTest.cpp \

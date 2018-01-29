@@ -48,8 +48,6 @@ namespace backend
 {
 
 class BackendConnectionManager;
-class BackendSinkInterface;
-class BackendSourceInterface;
 class RoundRobinPoolSelector;
 
 using BackendConnectionManagerPtr = std::shared_ptr<BackendConnectionManager>;
@@ -93,24 +91,6 @@ public:
     {
         return params_;
     }
-
-    std::unique_ptr<BackendSinkInterface>
-    newBackendSink(const Namespace&,
-                   const std::string& name);
-
-    std::unique_ptr<std::ostream>
-    getOutputStream(const Namespace&,
-                    const std::string& name,
-                    size_t buf_size = 4096);
-
-    std::unique_ptr<BackendSourceInterface>
-    newBackendSource(const Namespace&,
-                     const std::string& name);
-
-    std::unique_ptr<std::istream>
-    getInputStream(const Namespace&,
-                   const std::string& name,
-                   size_t buf_size = 4096);
 
     size_t
     capacity() const;

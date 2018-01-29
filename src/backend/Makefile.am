@@ -46,11 +46,7 @@ libbackend_la_SOURCES = \
 	GarbageCollector.cpp \
 	LocalConfig.cpp \
 	Local_Connection.cpp \
-	Local_Sink.cpp \
-	Local_Source.cpp \
 	LockStore.cpp \
-	ManagedBackendSink.cpp \
-	ManagedBackendSource.cpp \
 	MultiConfig.cpp \
 	Namespace.cpp \
 	NamespacePoolSelector.cpp \
