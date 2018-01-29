@@ -14,8 +14,8 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendTestBase.h"
-#include "../AlbaConfig.h"
 #include "../BackendRequestParameters.h"
+#include "../ConnectionWithHooks.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/make_shared.hpp>
@@ -177,14 +177,14 @@ TEST_F(BackendInterfaceTest, conditional_operations)
     BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
 
     auto make_tag([&](const std::string& n) -> std::unique_ptr<yt::UniqueObjectTag>
-                   {
-                       const fs::path cpath(path_ / n);
-                       fs::ofstream(cpath) << cpath;
-                       return bi->write_tag(cpath,
-                                            n,
-                                            nullptr,
-                                            OverwriteObject::T);
-                   });
+                  {
+                      const fs::path cpath(path_ / n);
+                      fs::ofstream(cpath) << cpath;
+                      return bi->write_tag(cpath,
+                                           n,
+                                           nullptr,
+                                           OverwriteObject::T);
+                  });
 
     const std::string cname("cond");
     const auto cond(boost::make_shared<Condition>(cname,
@@ -273,28 +273,20 @@ TEST_F(BackendInterfaceTest, conditional_operations)
 // https://github.com/openvstorage/volumedriver/issues/336
 TEST_F(BackendInterfaceTest, retry_on_connection_errors)
 {
-    // TODO: it'd be nicer to check that no-one's listening
-    // on that port.
-    const AlbaConfig cfg("127.0.0.1",
-                         23456,
-                         1000);
-
-    bpt::ptree pt;
-    cfg.persist_internal(pt,
-                         ReportDefault::F);
-
-    BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt,
-                                                                    RegisterComponent::F));
+    auto h(ConnectionWithHooks::add_hook<Operation::NamespaceExists>([](const Namespace&)
+        {
+            throw BackendConnectFailureException();
+        }));
 
     const Namespace nspace("nspace"s);
-    std::shared_ptr<ConnectionPool> pool(cm->pool(nspace));
+    std::shared_ptr<ConnectionPool> pool(cm_->pool(nspace));
     const ConnectionPool::Clock::time_point t(ConnectionPool::Clock::now());
 
     EXPECT_FALSE(pool->blacklisted());
     EXPECT_LT(pool->blacklisted_until(),
               t);
 
-    BackendInterfacePtr bi(cm->newBackendInterface(nspace));
+    BackendInterfacePtr bi(cm_->newBackendInterface(nspace));
     EXPECT_EQ(0,
               bi->retry_counter());
 
