@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include <youtils/ScopeExit.h>
 #include <youtils/System.h>
 
 using namespace XmlRpc;
@@ -52,7 +53,6 @@ nonFatalError()
   int err = XmlRpcSocket::getError();
   return (err == EINPROGRESS || err == EAGAIN || err == EWOULDBLOCK || err == EINTR);
 }
-
 
 
 int
@@ -158,24 +158,48 @@ XmlRpcSocket::connect(int fd, std::string& host, int port)
       return -1;
   }
 
-  struct sockaddr_in saddr;
-  memset(&saddr, 0, sizeof(saddr));
-  saddr.sin_family = AF_INET;
+  addrinfo hints;
+  memset(&hints, 0x0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = 0;
+  hints.ai_protocol = 0;
 
-  struct hostent *hp = gethostbyname(host.c_str());
-  if (hp == 0) return false;
+  addrinfo* infos = nullptr;
+  const std::string portstr(boost::lexical_cast<std::string>(port));
+  int result = getaddrinfo(host.c_str(),
+                           portstr.c_str(),
+                           &hints,
+                           &infos);
+  if (result != 0)
+  {
+      LOG_ERROR("Failed to resolve " << host << ":" << port <<
+                ": " << gai_strerror(result));
+      return false;
+  }
 
-  saddr.sin_family = hp->h_addrtype;
-  memcpy(&saddr.sin_addr, hp->h_addr, hp->h_length);
-  saddr.sin_port = htons((u_short) port);
+  auto on_exit(yt::make_scope_exit([&]
+                                   {
+                                       freeaddrinfo(infos);
+                                   }));
 
-  // For asynch operation, this will return EWOULDBLOCK (windows) or
-  // EINPROGRESS (linux) and we just need to wait for the socket to be writable...
-  int result = ::connect(fd, (struct sockaddr *)&saddr, sizeof(saddr));
-  return result == 0 || nonFatalError();
+  for (addrinfo* ai = infos; ai != nullptr; ai = ai->ai_next)
+  {
+      result = ::connect(fd,
+                         ai->ai_addr,
+                         ai->ai_addrlen);
+      // For asynch operation, this will return EWOULDBLOCK (windows) or
+      // EINPROGRESS (linux) and we just need to wait for the socket to be writable...
+      if (result == 0 or nonFatalError())
+      {
+          return true;
+      }
+  }
+
+  LOG_ERROR("Failed to connect to " << host << ":" << port);
+
+  return false;
 }
-
-
 
 // Read available text from the specified socket. Returns false on error.
 bool
