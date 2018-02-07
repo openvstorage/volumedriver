@@ -30,7 +30,8 @@
 #include <youtils/Logging.h>
 #include <youtils/SpinLock.h>
 
-VD_BOOLEAN_ENUM(ForceNewConnection)
+VD_BOOLEAN_ENUM(ForceNewConnection);
+VD_BOOLEAN_ENUM(EnableConnectionHooks);
 
 namespace backend
 {
@@ -49,7 +50,8 @@ public:
     static std::shared_ptr<ConnectionPool>
     create(std::unique_ptr<BackendConfig>,
            size_t capacity,
-           const std::atomic<uint32_t>& blacklist_secs);
+           const std::atomic<uint32_t>& blacklist_secs,
+           EnableConnectionHooks);
 
     ~ConnectionPool();
 
@@ -107,7 +109,8 @@ private:
 
     ConnectionPool(std::unique_ptr<BackendConfig>,
                    size_t,
-                   const std::atomic<uint32_t>& blacklist_secs);
+                   const std::atomic<uint32_t>& blacklist_secs,
+                   EnableConnectionHooks);
 
     mutable fungi::SpinLock lock_;
 
@@ -119,9 +122,13 @@ private:
     Counters counters_;
     const std::atomic<uint32_t>& blacklist_secs_;
     Clock::time_point blacklisted_until_;
+    EnableConnectionHooks enable_connection_hooks_;
 
     std::unique_ptr<BackendConnectionInterface>
     make_one_();
+
+    std::unique_ptr<BackendConnectionInterface>
+    maybe_make_one_with_hooks_();
 
     static std::unique_ptr<BackendConnectionInterface>
     pop_(Connections&);

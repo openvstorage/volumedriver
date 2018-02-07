@@ -44,7 +44,8 @@ BackendTestSetup::initialize_connection_manager()
                                                                  ReportDefault::F);
 
     cm_ = BackendConnectionManager::create(pt,
-                                           RegisterComponent::F);
+                                           RegisterComponent::F,
+                                           EnableConnectionHooks::T);
 }
 
 void

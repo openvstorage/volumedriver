@@ -48,8 +48,6 @@ namespace backend
 {
 
 class BackendConnectionManager;
-class BackendSinkInterface;
-class BackendSourceInterface;
 class RoundRobinPoolSelector;
 
 using BackendConnectionManagerPtr = std::shared_ptr<BackendConnectionManager>;
@@ -66,7 +64,8 @@ public:
     // reference is returned.
     static BackendConnectionManagerPtr
     create(const boost::property_tree::ptree&,
-           const RegisterComponent = RegisterComponent::T);
+           const RegisterComponent = RegisterComponent::T,
+           const EnableConnectionHooks = EnableConnectionHooks::F);
 
     ~BackendConnectionManager() = default;
 
@@ -93,24 +92,6 @@ public:
     {
         return params_;
     }
-
-    std::unique_ptr<BackendSinkInterface>
-    newBackendSink(const Namespace&,
-                   const std::string& name);
-
-    std::unique_ptr<std::ostream>
-    getOutputStream(const Namespace&,
-                    const std::string& name,
-                    size_t buf_size = 4096);
-
-    std::unique_ptr<BackendSourceInterface>
-    newBackendSource(const Namespace&,
-                     const std::string& name);
-
-    std::unique_ptr<std::istream>
-    getInputStream(const Namespace&,
-                   const std::string& name,
-                   size_t buf_size = 4096);
 
     size_t
     capacity() const;
@@ -195,7 +176,8 @@ private:
     std::atomic<uint64_t> next_pool_;
 
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
-                                      const RegisterComponent = RegisterComponent::T);
+                                      const RegisterComponent,
+                                      const EnableConnectionHooks);
 
     friend class toolcut::BackendToolCut;
     friend class toolcut::BackendConnectionToolCut;
