@@ -46,9 +46,6 @@ public:
     freeLock();
 
     bool
-    overwriteLock();
-
-    bool
     putLock();
 
     bool
@@ -60,6 +57,12 @@ public:
     const std::string&
     name() const;
 
+    static unsigned
+    sleep_seconds();
+
+    static uint64_t
+    max_update_retries();
+
 private:
     DECLARE_LOGGER("HeartBeatLockCommunicator");
 
@@ -67,13 +70,11 @@ private:
     std::unique_ptr<UniqueObjectTag> tag_;
     HeartBeatLock lock_;
 
-    // Don't try to update more than this number of times...
-    // apparantly a conforming application can otherwise put this thing in an
-    // infinite loop.
-    static const uint64_t max_update_retries = 100;
-
     HeartBeatLock
     getLock();
+
+    bool
+    overwriteLock();
 };
 
 }

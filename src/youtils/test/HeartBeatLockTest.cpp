@@ -28,6 +28,7 @@
 #include <sys/shm.h>
 
 #include <boost/make_shared.hpp>
+#include <boost/thread/future.hpp>
 
 #include <gtest/gtest.h>
 
@@ -36,6 +37,7 @@ namespace youtilstest
 
 using namespace std::literals::string_literals;
 using namespace youtils;
+namespace bc = boost::chrono;
 
 namespace
 {
@@ -71,14 +73,22 @@ class LockStore
     : public GlobalLockStore
 {
 public:
+    MAKE_EXCEPTION(InjectedError,
+                   fungi::IOException);
+
     LockStore(Locks& locks,
               const UUID& uuid)
-        : locks_(locks)
+        : inject_write_error_(false)
+        , inject_read_error_(false)
+        , locks_(locks)
         , uuid_(uuid)
         , name_(uuid_.str())
+        , writes_(0)
+        , reads_(0)
+
     {}
 
-    virtual ~LockStore() = default;
+    ~LockStore() = default;
 
     LockStore(const LockStore&) = delete;
 
@@ -98,6 +108,13 @@ public:
     std::tuple<HeartBeatLock, std::unique_ptr<UniqueObjectTag>>
     read() override final
     {
+        ++reads_;
+
+        if (inject_read_error_)
+        {
+            throw InjectedError("dutifully injected read error as requested");
+        }
+
         boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
 
         auto it = locks_.find(uuid_,
@@ -116,6 +133,13 @@ public:
     write(const HeartBeatLock& lock,
           const UniqueObjectTag* tag) override final
     {
+        ++writes_;
+
+        if (inject_write_error_)
+        {
+            throw InjectedError("dutifully injected write error as requested");
+        }
+
         boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
 
         auto it = locks_.find(uuid_,
@@ -158,12 +182,29 @@ public:
         locks_.map.erase(uuid_);
     }
 
+    size_t
+    write_count() const
+    {
+        return writes_;
+    }
+
+    size_t
+    read_count() const
+    {
+        return reads_;
+    }
+
+    std::atomic<bool> inject_write_error_;
+    std::atomic<bool> inject_read_error_;
+
 private:
     DECLARE_LOGGER("TestLockStore");
 
     Locks& locks_;
     UUID uuid_;
     std::string name_;
+    size_t writes_;
+    size_t reads_;
 };
 
 }
@@ -190,16 +231,17 @@ protected:
 struct TestCallBack
 {
     TestCallBack()
-        : called_(false)
-    {   }
-
+        : future_(promise_.get_future())
+    {}
 
     void
     callback(const std::string&)
     {
-        called_ = true;
+        promise_.set_value(true);
     }
-    bool called_;
+
+    boost::promise<bool> promise_;
+    boost::unique_future<bool> future_;
 };
 
 template<typename T>
@@ -213,19 +255,20 @@ trampoline(void* data,
 TEST_F(HeartBeatLockTest, test_no_lock_if_namespace_doesnt_exist)
 {
     TestCallBack callback;
-
     locks_.map.clear();
+
+    const unsigned secs = 1;
 
     LockService lock_service(GracePeriod(boost::posix_time::seconds(1)),
                              &trampoline<TestCallBack>,
                              &callback,
                              lock_store_,
-                             UpdateInterval(boost::posix_time::seconds(1)));
+                             UpdateInterval(boost::posix_time::seconds(secs)));
 
     ASSERT_FALSE(lock_service.lock());
     EXPECT_NO_THROW(lock_service.unlock());
-    sleep(1);
-    EXPECT_FALSE(callback.called_);
+    boost::this_thread::sleep_for(bc::seconds(secs));
+    EXPECT_FALSE(callback.future_.is_ready());
 }
 
 TEST_F(HeartBeatLockTest, test_lock_if_namespace_exists)
@@ -240,9 +283,80 @@ TEST_F(HeartBeatLockTest, test_lock_if_namespace_exists)
                              UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_TRUE(lock_service.lock());
+    EXPECT_FALSE(callback.future_.is_ready());
     EXPECT_NO_THROW(lock_service.unlock());
-    sleep(1);
-    EXPECT_TRUE(callback.called_);
+    EXPECT_TRUE(callback.future_.get());
+}
+
+// https://github.com/openvstorage/volumedriver/issues/387
+TEST_F(HeartBeatLockTest, retries_1)
+{
+    TestCallBack callback;
+    size_t secs = 3;
+    ASSERT_EQ(1,
+              HeartBeatLockCommunicator::sleep_seconds()) << "adjust this test";
+
+    LockService lock_service(GracePeriod(boost::posix_time::seconds(1)),
+                             &trampoline<TestCallBack>,
+                             &callback,
+                             lock_store_,
+                             UpdateInterval(boost::posix_time::seconds(secs)));
+
+    ASSERT_TRUE(lock_service.lock());
+
+    LockStore& ls = reinterpret_cast<LockStore&>(*lock_store_);
+    const size_t writes = ls.write_count();
+    const size_t reads = ls.read_count();
+
+    ls.inject_write_error_ = true;
+    ls.inject_read_error_ = false;
+
+    EXPECT_TRUE(callback.future_.get());
+
+    EXPECT_LE(writes + secs,
+              ls.write_count());
+    EXPECT_LT(reads,
+              ls.read_count());
+}
+
+// https://github.com/openvstorage/volumedriver/issues/387
+TEST_F(HeartBeatLockTest, retries_2)
+{
+    TestCallBack callback;
+    size_t secs = 3;
+    ASSERT_EQ(1,
+              HeartBeatLockCommunicator::sleep_seconds()) << "adjust this test";
+
+    LockService lock_service(GracePeriod(boost::posix_time::seconds(1)),
+                             &trampoline<TestCallBack>,
+                             &callback,
+                             lock_store_,
+                             UpdateInterval(boost::posix_time::seconds(secs)));
+
+    ASSERT_TRUE(lock_service.lock());
+
+    LockStore& ls = reinterpret_cast<LockStore&>(*lock_store_);
+    ls.inject_write_error_ = true;
+    ls.inject_read_error_ = false;
+
+    const size_t writes = ls.write_count();
+
+    while (writes == ls.write_count())
+    {
+        boost::this_thread::sleep_for(bc::seconds(1));
+        EXPECT_FALSE(callback.future_.is_ready());
+    }
+
+    ls.inject_write_error_ = false;
+
+    const size_t writes2 = ls.write_count();
+    while (writes2 == ls.write_count())
+    {
+        boost::this_thread::sleep_for(bc::seconds(1));
+    }
+
+    EXPECT_FALSE(callback.future_.is_ready());
+    lock_service.unlock();
 }
 
 namespace
@@ -442,8 +556,7 @@ TEST_F(HeartBeatLockTest, test_throwing_away_the_lock)
 
     ASSERT_TRUE(lock_service.lock());
 
-    boost::this_thread::sleep(boost::posix_time::seconds(7));
-    EXPECT_TRUE(callback.called_);
+    EXPECT_TRUE(callback.future_.get());
     t.interrupt();
     t.join();
 }

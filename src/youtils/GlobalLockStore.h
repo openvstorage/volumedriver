@@ -28,6 +28,7 @@ namespace youtils
 
 struct GlobalLockStore
 {
+    // TODO/REVISIT: don't use exceptions for this
     MAKE_EXCEPTION(LockHasChanged,
                    fungi::IOException);
 
