@@ -93,6 +93,7 @@ libyoutils_la_SOURCES = \
 	PeriodicActionPool.cpp \
 	python/ArakoonClient.cpp \
 	python/BuildInfoAdapter.cpp \
+	python/CheckSumAdapter.cpp \
 	python/LoggingAdapter.cpp \
 	RedisQueue.cpp \
 	RocksLogger.cpp \

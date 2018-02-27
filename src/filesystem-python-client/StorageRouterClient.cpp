@@ -53,6 +53,7 @@
 #include <youtils/UpdateReport.h>
 #include <youtils/python/ArakoonClient.h>
 #include <youtils/python/BuildInfoAdapter.h>
+#include <youtils/python/CheckSumAdapter.h>
 #include <youtils/python/ChronoDurationConverter.h>
 #include <youtils/python/DictConverter.h>
 #include <youtils/python/IterableConverter.h>
@@ -224,6 +225,7 @@ export_debug_module()
 
     vfspy::ScrubManagerClient::registerize();
     vfspy::ScrubWork::registerize();
+    ypy::register_once<ypy::CheckSumAdapter>();
     ypy::register_once<vpy::ToolCutImpl>();
     ypy::register_once<bepy::Exceptions>();
     ypy::register_once<bepy::InterfaceAdapter>();
