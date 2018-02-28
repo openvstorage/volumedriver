@@ -400,7 +400,7 @@ Snapshots::getSnapshotsTill(SnapshotNum num,
         }
     }
     LOG_ERROR("Snapshot with id " << num << " does not exist");
-    throw fungi::IOException("Snapshot does not exist");
+    throw SnapshotNotFoundException("Snapshot does not exist");
 }
 
 void
@@ -421,7 +421,7 @@ Snapshots::getSnapshotsAfter(SnapshotNum num,
     }
 
     LOG_ERROR("Snapshot with id " << num << " does not exist");
-    throw fungi::IOException("Snapshot does not exist");
+    throw SnapshotNotFoundException("Snapshot does not exist");
 }
 
 void
@@ -483,7 +483,7 @@ Snapshots::getTLogsTillSnapshot(const SnapshotNum num,
         }
     }
     LOG_ERROR("Snapshot with id " << num << " does not exist");
-    throw fungi::IOException("Snapshot does not exist");
+    throw SnapshotNotFoundException("Snapshot does not exist");
 }
 
 void
@@ -503,7 +503,7 @@ Snapshots::getTLogsAfterSnapshot(const SnapshotNum num,
         }
     }
     LOG_ERROR("Snapshot with id " << num << " does not exist");
-    throw fungi::IOException("Snapshot does not exist");
+    throw SnapshotNotFoundException("Snapshot does not exist");
 }
 
 void
@@ -532,7 +532,7 @@ Snapshots::getTLogsBetweenSnapshots(const SnapshotNum start,
             if(not start_seen)
             {
                 LOG_ERROR("Snapshot with id " << start << " does not exist");
-                throw fungi::IOException("Snapshot does not exist");
+                throw SnapshotNotFoundException("Snapshot does not exist");
             }
 
             i->getOrderedTLogIds(out);
@@ -542,7 +542,7 @@ Snapshots::getTLogsBetweenSnapshots(const SnapshotNum start,
             if(not start_seen)
             {
                 LOG_ERROR("Snapshot with id " << start << " does not exist");
-                throw fungi::IOException("Snapshot does not exist");
+                throw SnapshotNotFoundException("Snapshot does not exist");
             }
 
             if(include_last == IncludingEndSnapshot::T)
@@ -558,7 +558,7 @@ Snapshots::getTLogsBetweenSnapshots(const SnapshotNum start,
     }
 
     LOG_ERROR("Snapshot with id " << end_snap << " does not exist");
-    throw fungi::IOException("Snapshot does not exist");
+    throw SnapshotNotFoundException("Snapshot does not exist");
 }
 
 bool
@@ -706,8 +706,8 @@ Snapshots::getSnapshotScrubbingWork(const boost::optional<SnapshotName>& start_s
         if (start_snap)
         {
             LOG_ERROR("Requested start snapshot " << *start_snap << " does not exist");
-            throw fungi::IOException("Requested start snapshot does not exist",
-                                     (*start_snap).c_str());
+            throw SnapshotNotFoundException("Requested start snapshot does not exist",
+                                            (*start_snap).c_str());
         }
     }
 
@@ -716,8 +716,8 @@ Snapshots::getSnapshotScrubbingWork(const boost::optional<SnapshotName>& start_s
         if (end_snap)
         {
             LOG_ERROR("Requested end snapshot " << *end_snap << " does not exist");
-            throw fungi::IOException("Requested end snapshot does not exist",
-                                     (*end_snap).c_str());
+            throw SnapshotNotFoundException("Requested end snapshot does not exist",
+                                            (*end_snap).c_str());
         }
     }
 
