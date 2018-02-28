@@ -937,6 +937,82 @@ TEST_F(PythonClientTest, limit_scrub_work)
               client_.get_scrubbing_work(vol_id).size());
 }
 
+TEST_F(PythonClientTest, fine_grained_scrub_work)
+{
+    const FrontendPath vpath(make_volume_name("/fine_grained_scrub_work"));
+    const ObjectId vol_id(create_file(vpath, 10 << 20));
+    const uint32_t snapshot_num = 3;
+
+    std::vector<std::string> snapshot_names;
+    for (uint32_t i = 0; i < snapshot_num; i++)
+    {
+        snapshot_names.push_back(client_.create_snapshot(vol_id));
+        wait_for_snapshot(vol_id, snapshot_names.back());
+    }
+
+    auto check([&](decltype(snapshot_names)::const_iterator begin,
+                   decltype(snapshot_names)::const_iterator end,
+                   const size_t exp_size,
+                   const std::vector<std::string>& scrub_work)
+               {
+                   ASSERT_EQ(exp_size,
+                             scrub_work.size());
+
+                   for (const auto& work_str: scrub_work)
+                   {
+                       const scrubbing::ScrubWork w(work_str);
+                       EXPECT_EQ(vd::SnapshotName(*begin),
+                                 w.snapshot_name_);
+                       ++begin;
+                   }
+
+                   ASSERT_TRUE(begin == end);
+               });
+
+    check(snapshot_names.begin(),
+          snapshot_names.end(),
+          3,
+          client_.get_scrubbing_work(vol_id));
+
+    check(++snapshot_names.begin(),
+          snapshot_names.end(),
+          2,
+          client_.get_scrubbing_work(vol_id,
+                                     snapshot_names.front(),
+                                     snapshot_names.back()));
+
+    check(snapshot_names.begin(),
+          ++snapshot_names.begin(),
+          1,
+          client_.get_scrubbing_work(vol_id,
+                                     boost::none,
+                                     snapshot_names.front()));
+
+    check(++snapshot_names.begin(),
+          snapshot_names.end(),
+          2,
+          client_.get_scrubbing_work(vol_id,
+                                     snapshot_names.front(),
+                                     boost::none));
+
+    check(++snapshot_names.begin(),
+          ++snapshot_names.begin(),
+          0,
+          client_.get_scrubbing_work(vol_id,
+                                     snapshot_names.front(),
+                                     snapshot_names.front()));
+
+    EXPECT_THROW(client_.get_scrubbing_work(vol_id,
+                                            "no-such-snapshot"s),
+                 clienterrors::SnapshotNotFoundException);
+
+    EXPECT_THROW(client_.get_scrubbing_work(vol_id,
+                                            boost::none,
+                                            "no-such-snapshot"s),
+                 clienterrors::SnapshotNotFoundException);
+
+}
+
 TEST_F(PythonClientTest, volume_creation)
 {
     const FrontendPath vpath("/volume");

@@ -68,7 +68,9 @@ public:
          boost::python::object& /* traceback */);
 
     std::vector<std::string>
-    get_scrubbing_work(const PythonClient::MaybeSeconds& = boost::none);
+    get_scrubbing_work(const boost::optional<std::string>& start_snap = boost::none,
+                       const boost::optional<std::string>& end_snap = boost::none,
+                       const PythonClient::MaybeSeconds& = boost::none);
 
     void
     apply_scrubbing_result(const std::string& res,

@@ -185,7 +185,9 @@ LockedPythonClient::info()
 }
 
 std::vector<std::string>
-LockedPythonClient::get_scrubbing_work(const PythonClient::MaybeSeconds& timeout)
+LockedPythonClient::get_scrubbing_work(const boost::optional<std::string>& start_snap,
+                                       const boost::optional<std::string>& end_snap,
+                                       const PythonClient::MaybeSeconds& timeout)
 {
     LOG_INFO(volume_id_ << ": getting scrub work");
 
@@ -193,6 +195,8 @@ LockedPythonClient::get_scrubbing_work(const PythonClient::MaybeSeconds& timeout
     THROW_UNLESS(locked_section_);
 
     return PythonClient::get_scrubbing_work(volume_id_,
+                                            start_snap,
+                                            end_snap,
                                             timeout);
 }
 
