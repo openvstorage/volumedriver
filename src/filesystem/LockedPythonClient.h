@@ -48,7 +48,7 @@ public:
     create(const std::string& cluster_id,
            const std::vector<ClusterContact>&,
            const std::string& volume_id,
-           const boost::optional<boost::chrono::seconds>& = boost::none,
+           const PythonClient::MaybeSeconds& = boost::none,
            const unsigned update_interval_secs = 3,
            const unsigned grace_period_secs = 5);
 
@@ -68,10 +68,11 @@ public:
          boost::python::object& /* traceback */);
 
     std::vector<std::string>
-    get_scrubbing_work();
+    get_scrubbing_work(const PythonClient::MaybeSeconds& = boost::none);
 
     void
-    apply_scrubbing_result(const std::string& res);
+    apply_scrubbing_result(const std::string& res,
+                           const PythonClient::MaybeSeconds& = boost::none);
 
     std::string
     scrub(const std::string& scrub_work,
