@@ -15,11 +15,30 @@
 
 #include "Catchers.h"
 #include "HeartBeatLockCommunicator.h"
+#include "System.h"
 
 #include <boost/thread.hpp>
 
 namespace youtils
 {
+
+namespace bc = boost::chrono;
+
+unsigned
+HeartBeatLockCommunicator::sleep_seconds()
+{
+    static const unsigned s = System::get_env_with_default("HEARTBEAT_LOCK_COMMUNICATOR_SLEEP_SECONDS",
+                                                           1);
+    return s;
+}
+
+uint64_t
+HeartBeatLockCommunicator::max_update_retries()
+{
+    static const unsigned n = System::get_env_with_default("HEARTBEAT_LOCK_COMMUNICATOR_MAX_UPDATE_RETRIES",
+                                                           100ULL);
+    return n;
+}
 
 HeartBeatLockCommunicator::HeartBeatLockCommunicator(GlobalLockStorePtr lock_store,
                                                      const boost::posix_time::time_duration connection_timeout,
@@ -39,7 +58,11 @@ void
 HeartBeatLockCommunicator::freeLock()
 {
     lock_.hasLock(false);
-    overwriteLock();
+    try
+    {
+        overwriteLock();
+    }
+    CATCH_STD_ALL_LOG_IGNORE(name() << ": exception overwriting lock");
 }
 
 HeartBeatLock
@@ -66,11 +89,11 @@ HeartBeatLockCommunicator::overwriteLock()
         LOG_INFO(name() << ": overwrote the lock");
         return true;
     }
-    CATCH_STD_ALL_EWHAT({
-            LOG_INFO(name() <<
-                     ": exception while overwriting the lock: " << EWHAT);
-            return false;
-        });
+    catch (GlobalLockStore::LockHasChanged& e)
+    {
+        LOG_INFO(name() << "failed to overwrite lock: " << e.what());
+        return false;
+    }
 }
 
 bool
@@ -102,7 +125,7 @@ HeartBeatLockCommunicator::tryToAcquireLock()
         HeartBeatLock l(getLock());
         if(not l.hasLock())
         {
-            LOG_INFO(name() << ": got the lock");
+            LOG_INFO(name() << ": lock is not owned, trying to get it");
             return overwriteLock();
         }
         else
@@ -129,67 +152,65 @@ HeartBeatLockCommunicator::refreshLock(MilliSeconds max_wait_time)
     uint64_t count = 0;
     Clock::time_point start_of_update = Clock::now();
 
-    while (count++ < max_update_retries)
+    while (count < max_update_retries())
     {
         LOG_INFO(name() <<
                  ": once more into the breach dear friends (retry " <<
                  count << ")");
 
-        if (overwriteLock())
+        ++count;
+        bool sleep = false;
+
+        try
+        {
+            if (overwriteLock())
+            {
+                LOG_INFO(name() <<
+                         ": lock was successfully refreshed");
+                return true;
+            }
+        }
+        CATCH_STD_ALL_EWHAT({
+                LOG_ERROR(name() << ": exception while refreshing lock: " <<EWHAT);
+
+                const Clock::duration update_duration = Clock::now() - start_of_update;
+                if (update_duration + bc::seconds(sleep_seconds()) > max_wait_time)
+                {
+                    LOG_ERROR(name() << "max wait time " << max_wait_time <<
+                              " would be exceeded, giving up");
+                    throw;
+                }
+                else
+                {
+                    LOG_WARN(name() <<
+                             ": refreshing the lock failed, we have " <<
+                             bc::duration_cast<bc::seconds>(max_wait_time - update_duration) << " left");
+                    sleep = true;
+                }
+            });
+
+        if (sleep)
+        {
+            //boost::this_thread::sleep uses get_system_time() and might hang on system time reset
+            ::sleep(sleep_seconds());
+        }
+
+        try
         {
             LOG_INFO(name() <<
-                     ": lock was successfully refreshed");
-            return true;
-        }
-        else
-        {
-            LOG_WARN(name() << ": failed to refresh lock");
-            try
+                     ": reading the lock to see whether we're still owning it");
+            const HeartBeatLock local_lock_(getLock());
+
+            if (local_lock_.different_owner(lock_))
             {
-                boost::optional<HeartBeatLock> local_lock;
-                const int sleep_seconds = 1;
-
-                while(true)
-                {
-                    try
-                    {
-                        LOG_INFO(name() <<
-                                 ": reading the lock to see whether we're still owning it");
-                        local_lock = (getLock());
-                        break;
-                    }
-                    catch (...)
-                    {
-                        Clock::duration update_duration =
-                            Clock::now() - start_of_update;
-                        if (update_duration + boost::chrono::seconds(sleep_seconds) > max_wait_time)
-                        {
-                            throw;
-                        }
-                        else
-                        {
-                            LOG_WARN(name() <<
-                                     ": reading the lock failed, we have " <<
-                                     boost::chrono::duration_cast<boost::chrono::seconds>(max_wait_time - update_duration) << " left");
-                        }
-                    }
-                    //boost::this_thread::sleep uses get_system_time() and might hang on system time reset
-                    sleep(sleep_seconds);
-                }
-
-                VERIFY(local_lock);
-                if(local_lock->different_owner(lock_))
-                {
-                    LOG_WARN(name() << ": lost the lock");
-                    return false;
-                }
+                LOG_WARN(name() << ": lost the lock");
+                return false;
             }
-            CATCH_STD_ALL_EWHAT({
-                    LOG_WARN(name() <<
-                             ": exception getting the lock: " << EWHAT);
-                    return false;
-                });
         }
+        CATCH_STD_ALL_EWHAT({
+                LOG_WARN(name() <<
+                         ": exception getting the lock: " << EWHAT);
+            });
     }
 
     LOG_ERROR(name() << ": ran out of retries");
