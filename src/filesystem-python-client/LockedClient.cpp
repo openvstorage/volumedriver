@@ -45,18 +45,27 @@ LockedClient::registerize()
              &vfs::LockedPythonClient::enter)
         .def("__exit__",
              &vfs::LockedPythonClient::exit)
-                .def("get_scrubbing_workunits",
+        .def("get_scrubbing_workunits",
              &LockedPythonClient::get_scrubbing_work,
+             (bpy::args("start_snapshot_id") = boost::optional<std::string>(),
+              bpy::args("end_snapshot_id") = boost::optional<std::string>(),
+              bpy::args("req_timeout_secs") = PythonClient::MaybeSeconds()),
              "get a list of scrubbing work units -- opaque strings\n"
+             "@param start_snapshot_id: optional string, start snapshot (*exclusive* if specified: (start, end])\n"
+             "@param end_snapshot_id: optional string, end snapshot (*inclusive* if specified: (start, end])\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: list of strings\n"
-             "@raises \n"
+             "@raises\n"
+             "      SnapshotNotFoundException (if an invalid start/end snapshot was specified)\n"
              "      ObjectNotFoundException\n"
              "      InvalidOperationException (on template)\n")
         .def("apply_scrubbing_result",
              &vfs::LockedPythonClient::apply_scrubbing_result,
-             (bpy::args("scrubbing_work_result")),
-             "Apply a scrubbing result on the volume it's meant for\n"
+             (bpy::args("scrubbing_work_result"),
+              bpy::args("req_timeout_secs") = PythonClient::MaybeSeconds()),
+             "Apply a scrubbing result on the volume it's meant for.\n"
              "@param scrubbing work result an opaque tuple returned by the scrubber\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      ObjectNotFoundException\n"
              "      SnapshotNotFoundException\n"

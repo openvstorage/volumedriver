@@ -219,6 +219,8 @@ public:
 
     std::vector<std::string>
     get_scrubbing_work(const std::string& volume_id,
+                       const boost::optional<std::string>& start_snap = boost::none,
+                       const boost::optional<std::string>& end_snap = boost::none,
                        const MaybeSeconds& = boost::none);
 
     void

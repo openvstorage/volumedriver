@@ -185,18 +185,24 @@ LockedPythonClient::info()
 }
 
 std::vector<std::string>
-LockedPythonClient::get_scrubbing_work()
+LockedPythonClient::get_scrubbing_work(const boost::optional<std::string>& start_snap,
+                                       const boost::optional<std::string>& end_snap,
+                                       const PythonClient::MaybeSeconds& timeout)
 {
     LOG_INFO(volume_id_ << ": getting scrub work");
 
     THROW_UNLESS(promise_);
     THROW_UNLESS(locked_section_);
 
-    return PythonClient::get_scrubbing_work(volume_id_);
+    return PythonClient::get_scrubbing_work(volume_id_,
+                                            start_snap,
+                                            end_snap,
+                                            timeout);
 }
 
 void
-LockedPythonClient::apply_scrubbing_result(const std::string& scrub_res)
+LockedPythonClient::apply_scrubbing_result(const std::string& scrub_res,
+                                           const PythonClient::MaybeSeconds& timeout)
 {
     LOG_INFO(volume_id_ << ": applying scrub result");
 
@@ -204,7 +210,8 @@ LockedPythonClient::apply_scrubbing_result(const std::string& scrub_res)
     THROW_UNLESS(locked_section_);
 
     return PythonClient::apply_scrubbing_result(volume_id_,
-                                                scrub_res);
+                                                scrub_res,
+                                                timeout);
 }
 
 std::string

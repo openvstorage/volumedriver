@@ -498,10 +498,22 @@ PythonClient::list_volumes_by_path(const MaybeSeconds& timeout)
 
 std::vector<std::string>
 PythonClient::get_scrubbing_work(const std::string& volume_id,
+                                 const boost::optional<std::string>& start_snap,
+                                 const boost::optional<std::string>& end_snap,
                                  const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
+
+    if (start_snap)
+    {
+        req[XMLRPCKeys::start_snapshot] = *start_snap;
+    }
+
+    if (end_snap)
+    {
+        req[XMLRPCKeys::end_snapshot] = *end_snap;
+    }
 
     return extract_vec(call(GetScrubbingWork::method_name(),
                             req,
