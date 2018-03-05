@@ -100,7 +100,6 @@ volumedriver_test_SOURCES = \
 	StreamEnumTest.cpp \
 	TCBTMetaDataStoreSimTest.cpp \
 	TemplateVolumeTest.cpp \
-	Test2TCMaps.cpp \
 	TestMetadataErrors.cpp \
 	ThrottlingTest.cpp \
 	TimeZoneTests.cpp \
